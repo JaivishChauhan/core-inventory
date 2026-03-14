@@ -43,7 +43,7 @@ export default function SettingsPage() {
           <CardContent>
             <div className="flex items-center justify-center py-6">
               <Badge variant="outline" className="text-xs">
-                Phase 3 — Supabase Integration
+                Phase 3 — Local DB Integration
               </Badge>
             </div>
           </CardContent>
@@ -62,7 +62,7 @@ export default function SettingsPage() {
           <CardContent>
             <div className="flex items-center justify-center py-6">
               <Badge variant="outline" className="text-xs">
-                Phase 3 — Supabase Integration
+                Phase 3 — Local DB Integration
               </Badge>
             </div>
           </CardContent>

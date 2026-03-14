@@ -35,7 +35,7 @@ We are explicitly rejecting the standard "update the stock column" approach.
 
 
 * 
-**Proposed Pivot:** The specs call for an OTP-based password reset. **Opinion:** Managing passwords is a massive friction point and security liability. We should pivot to Passwordless Magic Links or OAuth (Google/Microsoft) via Supabase Auth or Clerk to streamline access and eliminate password reset flows entirely.
+**Authentication Direction:** The system must support standard username/email and password authentication with OTP-based password reset. Authentication and OTP generation/verification should be handled within the application stack without depending on third-party BaaS or hosted auth products.
 
 
 * 

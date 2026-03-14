@@ -12,7 +12,7 @@ The project focuses on:
 - Immutable move history for auditability
 - Multi-warehouse and nested location support
 
-The current app already includes scaffolded dashboard and operations screens, with Supabase integration planned as the backend layer.
+The current app already includes scaffolded dashboard and operations screens, with a local PostgreSQL-backed backend planned as the next implementation step.
 
 ## Core Product Model
 
@@ -45,10 +45,10 @@ These pages are scaffolded as server-rendered route entries and are ready to be 
 - Next.js 16 App Router
 - React 19
 - TypeScript
+- PostgreSQL
 - Tailwind CSS 4
 - `shadcn/ui`
 - TanStack Query
-- Supabase client libraries
 - Lucide React
 - pnpm
 
@@ -109,11 +109,11 @@ Project requirements and architecture notes live in [`Doc/`](./Doc):
 
 Based on the docs, the intended backend architecture includes:
 
-- Supabase Auth with magic links or OAuth
-- Row Level Security for warehouse access control
-- PostgreSQL tables for products, warehouses, locations, and stock moves
-- Database views or RPC functions for stock calculations
-- Realtime subscriptions for live dashboard updates
+- Local PostgreSQL as the only system database
+- No Backend-as-a-Service or third-party auth dependency
+- OTP-based password reset and in-app authentication flows
+- PostgreSQL tables for products, warehouses, locations, users, and stock moves
+- Database views, triggers, and stored procedures for stock calculations and validation
 
 ## Status
 

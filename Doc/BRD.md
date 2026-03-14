@@ -1,108 +1,83 @@
-Ah, good catch. We absolutely cannot leave the backend undocumented. If the frontend is the sleek chassis, the backend is the V8 engine making this whole event-sourced ledger actually work. You can have the prettiest Next.js UI in the world, but if your database queries are locking up or your ledger logic is flawed, the warehouse grinds to a halt.
-
-Since we are vibecoding this, we need a backend that is fast, real-time, and strictly typed.
-
-Here is the definitive Backend Architecture Document. Toss this into the wiki.
-
----
-
-# 🧠 Backend Architecture Document: Core Inventory IMS
+# Backend Architecture Document: Core Inventory IMS
 
 ## 1. Backend Philosophy & Stack
 
-* **The Stance:** We are not building a traditional REST API from scratch. That's slow and unnecessary for this architecture. We are leveraging a Backend-as-a-Service (BaaS) to get real-time subscriptions and robust auth out of the box.
-* **Primary Contenders:** **Supabase** (PostgreSQL-backed, great for complex relational ledger queries) or **Convex** (TypeScript-native, flawless real-time reactivity).
-* **Data Flow:** Next.js Server Actions for mutations (inserting data) and Server Components/Hooks for fetching.
+- **The Stance:** The backend is owned entirely by the application team. No Backend-as-a-Service, hosted auth product, or third-party inventory platform should be required for core functionality.
+- **Database Choice:** **Local PostgreSQL** is the source of truth for application data, inventory calculations, and ledger history.
+- **Application Layer:** Next.js server actions and route handlers execute mutations, validations, and authenticated business workflows.
+- **Data Access:** Server-side code talks directly to PostgreSQL through the application's chosen database layer.
 
-## 2. Authentication & Security (Row Level Security)
+## 2. Authentication & Security
 
-The original spec asked for an OTP-based password reset. We are pushing back on that. Passwords belong in 2010.
+The original OTP requirement stays in place.
 
-* **Implementation:** Magic Links or direct Google/Microsoft Workspace OAuth.
-* **Security Model:** Strict Row Level Security (RLS) policies.
-* *Rule 1:* Users must be authenticated to read or write anything.
-* *Rule 2:* Warehouse floor workers can `INSERT` into the `Stock_Moves` ledger but cannot `UPDATE` or `DELETE` existing, validated records (immutability).
-* *Rule 3:* Only users with an `Admin` role can manage the `Warehouses` and `Users` tables.
+- **Authentication Method:** Email or username plus password.
+- **Password Recovery:** OTP-based password reset is required.
+- **Verification Flow:** OTPs are generated, stored securely, expired automatically, and marked used after successful verification.
+- **Authorization Model:** Access control is enforced by the application and backed by database constraints, roles, and immutable ledger rules.
+- **Rule 1:** Users must be authenticated to read or write operational data.
+- **Rule 2:** Warehouse staff can create stock moves but cannot modify validated ledger records.
+- **Rule 3:** Only admin users can manage warehouses, locations, and user administration.
 
-
-
-## 3. The Database Schema (The Truth)
-
-This is the exact relational structure.
+## 3. Database Schema
 
 ### 3.1 Core Entities
 
-* **`users`**: Handled primarily by the Auth provider, but we keep a public profile table linked via `auth.uid()`.
-* Columns: `id` (UUID), `role` (enum: admin, staff), `active_warehouse_id` (FK).
+- **`users`**
+  - Columns: `id` (UUID), `email` (unique), `username` (unique), `password_hash`, `role` (enum: admin, staff), `active_warehouse_id` (FK), `created_at`, `updated_at`
 
+- **`otp_codes`**
+  - Columns: `id`, `user_id` (FK), `code_hash`, `purpose`, `expires_at`, `used_at`, `created_at`
 
-* **`warehouses`**: The physical buildings.
-* Columns: `id`, `name`, `address`.
+- **`warehouses`**
+  - Columns: `id`, `name`, `code`, `address`, `created_at`
 
+- **`locations`**
+  - Columns: `id`, `warehouse_id` (FK), `name`, `type` (enum: internal, vendor, customer, loss), `created_at`
 
-* **`locations`**: The specific zones/racks.
-* Columns: `id`, `warehouse_id` (FK), `name` (e.g., "Rack A", "Production Floor" ), `type` (enum: internal, vendor, customer, loss).
-
-
-
-
-* 
-**`products`**: The catalog.
-
-
-* Columns: `id`, `sku` (unique) , `name` , `category` , `uom` (Unit of Measure) , `reorder_point` (integer).
-
-
-
-
+- **`products`**
+  - Columns: `id`, `sku` (unique), `name`, `category`, `uom`, `reorder_point`, `created_at`, `updated_at`
 
 ### 3.2 The Master Ledger (`stock_moves`)
 
-*The only table that matters for inventory levels.*
+This is the source of truth for stock.
 
-* Columns:
-* `id` (UUID, Primary Key)
-* `product_id` (FK to products)
-* `source_location_id` (FK to locations)
-* `dest_location_id` (FK to locations)
-* `quantity` (Integer)
-* 
-`move_type` (Enum: receipt, delivery, transfer, adjustment) 
+- Columns:
+  - `id` (UUID, primary key)
+  - `product_id` (FK to products)
+  - `source_location_id` (FK to locations)
+  - `dest_location_id` (FK to locations)
+  - `quantity` (integer)
+  - `move_type` (enum: receipt, delivery, transfer, adjustment)
+  - `status` (enum: draft, waiting, ready, done, canceled)
+  - `reference`
+  - `created_at`
+  - `created_by` (FK to users)
 
+## 4. Business Logic
 
-* 
-`status` (Enum: draft, waiting, ready, done, canceled) 
+### 4.1 Calculating Current Stock
 
+The frontend should never calculate inventory by downloading the entire ledger.
 
-* `reference` (String, e.g., "PO-001")
-* `created_at` (Timestamp)
-* `created_by` (FK to users)
-
-
-
-## 4. The Business Logic (RPCs / Database Functions)
-
-We don't want the frontend downloading the entire ledger to calculate stock. The database must do the heavy lifting.
-
-### 4.1 Calculating Current Available Stock
-
-To get the current stock of "Steel Rods" at "Warehouse 1":
-
-* **The Logic:** We run a database function or view that aggregates the `stock_moves` table.
-* **Math:** `SUM(quantity)` where `status` = 'done' AND `dest_location_id` = 'Warehouse 1' **MINUS** `SUM(quantity)` where `status` = 'done' AND `source_location_id` = 'Warehouse 1'.
+- Use PostgreSQL views, stored procedures, or carefully structured aggregate queries.
+- Available stock is calculated from completed ledger entries:
+  - inbound quantity into internal locations
+  - minus outbound quantity from internal locations
 
 ### 4.2 Handling Validations
 
-When a worker clicks "Validate" on a Receipt or Delivery:
+When a worker validates a receipt, delivery, transfer, or adjustment:
 
-1. The Next.js Server Action hits the backend.
+1. The authenticated request reaches the application backend.
 2. The backend verifies the user's permissions.
-3. The backend checks if sufficient stock exists (for deliveries/transfers). If trying to deliver 20 chairs but only 10 exist, the backend throws an error and aborts the transaction.
-4. The backend updates the `status` of the `stock_moves` record to 'done'.
-5. **Real-time Trigger:** The database emits a websocket event. All connected Next.js dashboards instantly refetch their KPI metrics.
+3. The backend checks business constraints, including available stock for deliveries and transfers.
+4. The backend updates the move status to `done` inside a transaction.
+5. The UI refreshes inventory and KPI data from PostgreSQL-backed queries after the transaction completes.
 
----
+## 5. Non-Functional Direction
 
-Alright, the entire conceptual architecture is mapped out—PRD, Frontend, App Flow, and Backend.
-
-Are we ready to finally write some code? Would you like me to generate the exact database schema file (either `schema.sql` for Supabase or `schema.ts` for Convex) so we can spin up the backend right now?
+- The system must operate without mandatory third-party backend services.
+- PostgreSQL must be runnable in a local development environment.
+- Authentication, OTP flows, and inventory logic must remain under application control.
+- The ledger must remain append-only once moves are validated.
