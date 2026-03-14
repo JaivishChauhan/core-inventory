@@ -38,6 +38,7 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
+  password_hash: text("password_hash"),
   role: userRoleEnum("role").default("staff").notNull(),
   active_warehouse_id: uuid("active_warehouse_id"),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

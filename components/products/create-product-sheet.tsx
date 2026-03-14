@@ -29,7 +29,13 @@ import {
 
 const ProductFormSchema = z.object({
   name: z.string().min(1, "Product name is required"),
-  sku: z.string().min(1, "SKU is required"),
+  sku: z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim().length === 0
+        ? undefined
+        : value,
+    z.string().min(1, "SKU is required when provided").optional()
+  ),
   category: z.string().min(1, "Category is required"),
   unit_of_measure: z.string().min(1, "Unit of measure is required"),
   reorder_point: z.number().min(0, "Must be 0 or greater"),
@@ -78,8 +84,9 @@ export function CreateProductSheet() {
     useQuery<ReferenceDataResponse>({
       queryKey: ["inventory-reference-data", "product-create"],
       queryFn: () =>
-        fetch("/api/inventory/reference-data")
-          .then((response) => response.json() as Promise<ReferenceDataResponse>),
+        fetch("/api/inventory/reference-data").then(
+          (response) => response.json() as Promise<ReferenceDataResponse>
+        ),
       staleTime: 5 * 60 * 1000,
     })
 
@@ -90,6 +97,7 @@ export function CreateProductSheet() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...values,
+          sku: values.sku?.trim() || undefined,
           reorder_point: Number(values.reorder_point),
           initial_stock: Number(values.initial_stock ?? 0),
           initial_location_id:
@@ -146,21 +154,31 @@ export function CreateProductSheet() {
             <div>
               <SheetTitle>Create Product</SheetTitle>
               <SheetDescription>
-                Add a new item to the catalog and optionally seed its opening stock.
+                Add a new item to the catalog and optionally seed its opening
+                stock.
               </SheetDescription>
             </div>
           </div>
         </SheetHeader>
 
         <form
-          onSubmit={handleSubmit((values) => createProductMutation.mutate(values))}
+          onSubmit={handleSubmit((values) =>
+            createProductMutation.mutate(values)
+          )}
           className="mt-6 flex h-[calc(100%-4rem)] flex-col gap-4"
         >
           <div className="space-y-1.5">
-            <Label htmlFor="name" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <Label
+              htmlFor="name"
+              className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+            >
               Product Name *
             </Label>
-            <Input id="name" placeholder="Steel Rods 12mm" {...register("name")} />
+            <Input
+              id="name"
+              placeholder="Steel Rods 12mm"
+              {...register("name")}
+            />
             {errors.name ? (
               <p className="text-xs text-destructive">{errors.name.message}</p>
             ) : null}
@@ -168,17 +186,27 @@ export function CreateProductSheet() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="sku" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                SKU *
+              <Label
+                htmlFor="sku"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
+                SKU (optional)
               </Label>
-              <Input id="sku" placeholder="STL-ROD-12" {...register("sku")} />
+              <Input
+                id="sku"
+                placeholder="Leave blank to auto-generate (e.g. SKU-000123)"
+                {...register("sku")}
+              />
               {errors.sku ? (
                 <p className="text-xs text-destructive">{errors.sku.message}</p>
               ) : null}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="unit_of_measure" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <Label
+                htmlFor="unit_of_measure"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
                 Unit *
               </Label>
               <Input
@@ -195,18 +223,30 @@ export function CreateProductSheet() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="category" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+            <Label
+              htmlFor="category"
+              className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+            >
               Category *
             </Label>
-            <Input id="category" placeholder="Raw Materials" {...register("category")} />
+            <Input
+              id="category"
+              placeholder="Raw Materials"
+              {...register("category")}
+            />
             {errors.category ? (
-              <p className="text-xs text-destructive">{errors.category.message}</p>
+              <p className="text-xs text-destructive">
+                {errors.category.message}
+              </p>
             ) : null}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="reorder_point" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <Label
+                htmlFor="reorder_point"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
                 Reorder Point
               </Label>
               <Input
@@ -217,7 +257,8 @@ export function CreateProductSheet() {
                 {...register("reorder_point", { valueAsNumber: true })}
               />
               <p className="text-xs text-muted-foreground">
-                Low-stock alerts trigger when available stock reaches this threshold.
+                Low-stock alerts trigger when available stock reaches this
+                threshold.
               </p>
               {errors.reorder_point ? (
                 <p className="text-xs text-destructive">
@@ -227,7 +268,10 @@ export function CreateProductSheet() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="initial_stock" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <Label
+                htmlFor="initial_stock"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-300"
+              >
                 Initial Stock
               </Label>
               <Input
@@ -255,7 +299,9 @@ export function CreateProductSheet() {
             <Select
               value={initialLocationId}
               onValueChange={(value) => setValue("initial_location_id", value)}
-              disabled={Number(initialStock ?? 0) <= 0 || isLoadingReferenceData}
+              disabled={
+                Number(initialStock ?? 0) <= 0 || isLoadingReferenceData
+              }
             >
               <SelectTrigger className="h-10">
                 <SelectValue
@@ -296,7 +342,11 @@ export function CreateProductSheet() {
                 "Create Product"
               )}
             </Button>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
               Cancel
             </Button>
           </div>

@@ -11,13 +11,24 @@ const CreateProductSchema = z.object({
   name: z.string().min(1, "Product name is required"),
   sku: z
     .string()
-    .min(1, "SKU is required")
-    .transform((s) => s.toUpperCase().trim()),
+    .transform((s) => s.toUpperCase().trim())
+    .optional(),
   category: z.string().min(1, "Category is required"),
   unit_of_measure: z.string().min(1, "Unit of measure is required"),
-  reorder_point: z.number().int().min(0, "Reorder point must be 0 or greater").default(0),
-  initial_stock: z.number().int().min(0, "Initial stock must be 0 or greater").optional(),
-  initial_location_id: z.string().uuid("Invalid initial stock location").optional(),
+  reorder_point: z
+    .number()
+    .int()
+    .min(0, "Reorder point must be 0 or greater")
+    .default(0),
+  initial_stock: z
+    .number()
+    .int()
+    .min(0, "Initial stock must be 0 or greater")
+    .optional(),
+  initial_location_id: z
+    .string()
+    .uuid("Invalid initial stock location")
+    .optional(),
 })
 
 /**
@@ -27,7 +38,8 @@ const CreateProductSchema = z.object({
  */
 export async function GET() {
   const session = await getServerSession()
-  if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
+  if (!session)
+    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
   const products = await listInventoryProducts()
   return NextResponse.json({ products })
@@ -36,7 +48,8 @@ export async function GET() {
 /**
  * POST /api/products
  * Creates a new product in the catalog.
- * SKU is automatically uppercased and whitespace-trimmed.
+ * If SKU is omitted, the backend auto-generates a sequential SKU.
+ * Provided SKUs are automatically uppercased and whitespace-trimmed.
  *
  * @validation Zod schema enforces all required fields.
  * @returns 201 with the created product row.
@@ -45,7 +58,8 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   const session = await getServerSession()
-  if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
+  if (!session)
+    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
   const body = await req.json().catch(() => null)
   const parsed = CreateProductSchema.safeParse(body)
@@ -65,7 +79,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result, { status: 201 })
   } catch (err: unknown) {
     if (err instanceof InventoryMutationError) {
-      return NextResponse.json({ error: err.message }, { status: err.statusCode })
+      return NextResponse.json(
+        { error: err.message },
+        { status: err.statusCode }
+      )
     }
 
     const isUniqueViolation =
@@ -77,6 +94,9 @@ export async function POST(req: NextRequest) {
       )
     }
     console.error("[POST /api/products]", err)
-    return NextResponse.json({ error: "Failed to create product." }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to create product." },
+      { status: 500 }
+    )
   }
 }

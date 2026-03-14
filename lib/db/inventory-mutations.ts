@@ -13,7 +13,7 @@ type VirtualLocationType = "customer" | "loss" | "vendor"
 
 type CreateProductInput = {
   name: string
-  sku: string
+  sku?: string
   category: string
   unit_of_measure: string
   reorder_point: number
@@ -49,6 +49,29 @@ export class InventoryMutationError extends Error {
     super(message)
     this.name = "InventoryMutationError"
   }
+}
+
+/**
+ * Generates the next sequential SKU in the format SKU-000001.
+ * Uses a table lock to serialize SKU generation and avoid collisions.
+ */
+async function generateNextSku(executor: InventoryExecutor): Promise<string> {
+  await executor.execute(sql`LOCK TABLE products IN SHARE ROW EXCLUSIVE MODE`)
+
+  const maxSkuResult = await executor.execute<{
+    maxSkuNumber: number | null
+  }>(sql`
+    SELECT
+      COALESCE(
+        MAX(CAST(SUBSTRING(sku FROM '^SKU-(\\d+)$') AS INTEGER)),
+        0
+      ) AS "maxSkuNumber"
+    FROM products
+    WHERE sku ~ '^SKU-[0-9]+$'
+  `)
+
+  const nextSkuNumber = Number(maxSkuResult.rows[0]?.maxSkuNumber ?? 0) + 1
+  return `SKU-${String(nextSkuNumber).padStart(6, "0")}`
 }
 
 async function getAvailableStockAtLocation(
@@ -193,10 +216,7 @@ async function ensureMoveCanValidate(
     throw new InventoryMutationError("Cannot validate a canceled move.", 409)
   }
 
-  if (
-    move.move_type === "delivery" ||
-    move.move_type === "internal_transfer"
-  ) {
+  if (move.move_type === "delivery" || move.move_type === "internal_transfer") {
     const availableStock = await getAvailableStockAtLocation(
       executor,
       move.product_id,
@@ -218,11 +238,17 @@ export async function createProductWithInitialStock(
   activeWarehouseId?: string | null
 ) {
   return db.transaction(async (tx) => {
+    const normalizedSku = input.sku?.trim().toUpperCase()
+    const resolvedSku =
+      normalizedSku && normalizedSku.length > 0
+        ? normalizedSku
+        : await generateNextSku(tx)
+
     const [createdProduct] = await tx
       .insert(products)
       .values({
         name: input.name,
-        sku: input.sku,
+        sku: resolvedSku,
         category: input.category,
         unit_of_measure: input.unit_of_measure,
         reorder_point: input.reorder_point,
@@ -264,7 +290,10 @@ export async function createProductWithInitialStock(
   })
 }
 
-export async function createInventoryMove(input: CreateMoveInput, userId: string) {
+export async function createInventoryMove(
+  input: CreateMoveInput,
+  userId: string
+) {
   return db.transaction(async (tx) => {
     const [createdMove] = await tx
       .insert(stockMoves)
@@ -335,7 +364,9 @@ export async function applyInventoryAdjustment(
     const [location] = await tx
       .select()
       .from(locations)
-      .where(and(eq(locations.id, input.location_id), eq(locations.type, "internal")))
+      .where(
+        and(eq(locations.id, input.location_id), eq(locations.type, "internal"))
+      )
       .limit(1)
 
     if (!location) {
@@ -359,7 +390,11 @@ export async function applyInventoryAdjustment(
       )
     }
 
-    const lossLocation = await ensureVirtualLocation(tx, location.warehouse_id, "loss")
+    const lossLocation = await ensureVirtualLocation(
+      tx,
+      location.warehouse_id,
+      "loss"
+    )
 
     const [adjustmentMove] = await tx
       .insert(stockMoves)
@@ -401,7 +436,10 @@ type UpdateProductInput = {
  * SKU is immutable after creation to preserve ledger references.
  * @throws {InventoryMutationError} When product is not found.
  */
-export async function updateProduct(productId: string, input: UpdateProductInput) {
+export async function updateProduct(
+  productId: string,
+  input: UpdateProductInput
+) {
   const [existing] = await db
     .select({ id: products.id })
     .from(products)
@@ -417,8 +455,12 @@ export async function updateProduct(productId: string, input: UpdateProductInput
     .set({
       ...(input.name !== undefined && { name: input.name }),
       ...(input.category !== undefined && { category: input.category }),
-      ...(input.unit_of_measure !== undefined && { unit_of_measure: input.unit_of_measure }),
-      ...(input.reorder_point !== undefined && { reorder_point: input.reorder_point }),
+      ...(input.unit_of_measure !== undefined && {
+        unit_of_measure: input.unit_of_measure,
+      }),
+      ...(input.reorder_point !== undefined && {
+        reorder_point: input.reorder_point,
+      }),
       updated_at: new Date(),
     })
     .where(eq(products.id, productId))
@@ -494,7 +536,10 @@ export async function createWarehouse(input: CreateWarehouseInput) {
  * Updates an existing warehouse's fields.
  * @throws {InventoryMutationError} When warehouse is not found.
  */
-export async function updateWarehouse(warehouseId: string, input: UpdateWarehouseInput) {
+export async function updateWarehouse(
+  warehouseId: string,
+  input: UpdateWarehouseInput
+) {
   const [existing] = await db
     .select({ id: warehouses.id })
     .from(warehouses)
@@ -509,7 +554,9 @@ export async function updateWarehouse(warehouseId: string, input: UpdateWarehous
     .update(warehouses)
     .set({
       ...(input.name !== undefined && { name: input.name }),
-      ...(input.code !== undefined && { code: input.code.toUpperCase().trim() }),
+      ...(input.code !== undefined && {
+        code: input.code.toUpperCase().trim(),
+      }),
       ...(input.address !== undefined && { address: input.address }),
       updated_at: new Date(),
     })
@@ -598,7 +645,10 @@ export async function createLocation(input: CreateLocationInput) {
  * Updates an existing location's name or type.
  * @throws {InventoryMutationError} When location is not found.
  */
-export async function updateLocation(locationId: string, input: UpdateLocationInput) {
+export async function updateLocation(
+  locationId: string,
+  input: UpdateLocationInput
+) {
   const [existing] = await db
     .select({ id: locations.id })
     .from(locations)

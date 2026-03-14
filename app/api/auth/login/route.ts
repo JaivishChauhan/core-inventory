@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       .where(eq(users.email, email))
       .limit(1)
 
-    if (!user) {
+    if (!user || !user.password_hash) {
       return NextResponse.json(
         { error: "Invalid email or password." },
         { status: 401 }

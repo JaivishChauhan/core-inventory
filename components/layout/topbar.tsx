@@ -12,7 +12,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 import {
@@ -86,6 +86,7 @@ function useCommandPaletteShortcut(onOpen: () => void) {
 
 export function Topbar() {
   const router = useRouter()
+  const pathname = usePathname()
   const { query, handleSearchChange } = useDebounceSearch(SEARCH_DEBOUNCE_MS)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const { data: sessionData } = useQuery<{
@@ -116,12 +117,32 @@ export function Topbar() {
     searchInput?.focus()
   })
 
+  // Dynamic Page Title
+  const getPageTitle = (path: string) => {
+    if (path === "/") return "Dashboard"
+    if (path.startsWith("/products")) return "Products"
+    if (path.startsWith("/orders")) return "Orders"
+    if (path.startsWith("/operations/receipts")) return "Receipts"
+    if (path.startsWith("/operations/deliveries")) return "Delivery Orders"
+    if (path.startsWith("/operations/transfers")) return "Internal Transfers"
+    if (path.startsWith("/operations/adjustments")) return "Inventory Adjustments"
+    if (path.startsWith("/move-history")) return "Move History"
+    if (path.startsWith("/settings")) return "Warehouse Settings"
+    if (path.startsWith("/profile")) return "My Profile"
+    return "Overview"
+  }
+  const pageTitle = getPageTitle(pathname)
+
   return (
     <header className="sticky top-0 z-30 flex min-h-14 flex-wrap items-center gap-2 border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm supports-backdrop-filter:bg-background/60 sm:flex-nowrap sm:gap-3 sm:px-4">
       {/* Sidebar toggle — touch-friendly (FRD §8) */}
       <div className="flex items-center gap-2">
         <SidebarTrigger className="touch-target -ml-1" />
         <Separator orientation="vertical" className="hidden h-4 sm:block" />
+        {/* Dynamic Page Title */}
+        <div className="hidden sm:flex items-center ml-1">
+          <span className="font-semibold text-sm tracking-tight text-foreground">{pageTitle}</span>
+        </div>
       </div>
 
       {/* Global Search — FRD §3 */}

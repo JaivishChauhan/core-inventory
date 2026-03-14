@@ -22,11 +22,10 @@ import {
   ArrowLeftRight,
   ClipboardCheck,
   History,
-  Settings,
   Boxes,
-  ChevronDown,
   LogOut,
   User,
+  Warehouse,
 } from "lucide-react"
 
 import {
@@ -46,11 +45,6 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -63,19 +57,18 @@ import {
 const mainNavItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Products", href: "/products", icon: Package },
-  { title: "Orders", href: "/orders", icon: History },
 ]
 
 const operationItems = [
   { title: "Receipts", href: "/operations/receipts", icon: PackagePlus },
-  { title: "Deliveries", href: "/operations/deliveries", icon: Truck },
+  { title: "Delivery Orders", href: "/operations/deliveries", icon: Truck },
   {
-    title: "Transfers",
+    title: "Internal Transfers",
     href: "/operations/transfers",
     icon: ArrowLeftRight,
   },
   {
-    title: "Adjustments",
+    title: "Inventory Adjustment",
     href: "/operations/adjustments",
     icon: ClipboardCheck,
   },
@@ -83,7 +76,7 @@ const operationItems = [
 ]
 
 const systemNavItems = [
-  { title: "Settings", href: "/settings", icon: Settings },
+  { title: "Warehouse", href: "/settings", icon: Warehouse },
 ]
 
 export function AppSidebar() {
@@ -121,9 +114,6 @@ export function AppSidebar() {
     if (href === "/") return pathname === "/"
     return pathname.startsWith(href)
   }
-
-  /** Checks if any operation sub-route is active */
-  const isOperationsActive = pathname.startsWith("/operations")
 
   function handleNavigate() {
     if (isMobile) setOpenMobile(false)
@@ -190,57 +180,38 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Operations — Collapsible Sub-Menu */}
+        {/* Operations — Static Heading With Suboptions */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase group-data-[collapsible=icon]:hidden">
             Operations
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <Collapsible
-                defaultOpen={isOperationsActive}
-                className="group/collapsible"
-              >
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton
-                      tooltip="Operations"
-                      className="touch-target"
-                    >
-                      <PackagePlus className="size-4" />
+              {operationItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActiveRoute(item.href)}
+                    tooltip={item.title}
+                    className="touch-target"
+                  >
+                    <Link href={item.href} onClick={handleNavigate}>
+                      <item.icon className="size-4" />
                       <span className="group-data-[collapsible=icon]:hidden">
-                        Operations
+                        {item.title}
                       </span>
-                      <ChevronDown className="ml-auto size-4 transition-transform duration-200 group-data-[collapsible=icon]:hidden group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {operationItems.map((item) => (
-                        <SidebarMenuSubItem key={item.href}>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={isActiveRoute(item.href)}
-                          >
-                            <Link href={item.href} onClick={handleNavigate}>
-                              <item.icon className="size-3.5" />
-                              <span>{item.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
+                    </Link>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
-              </Collapsible>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* System */}
+        {/* Setting — Static Heading With Suboptions */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase group-data-[collapsible=icon]:hidden">
-            System
+            Setting
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
