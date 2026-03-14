@@ -33,6 +33,7 @@ export type InventoryProductRecord = {
   createdAt: string
   updatedAt: string
   totalAvailable: number
+  priceInCents: number
   isLowStock: boolean
   isOutOfStock: boolean
   locationBreakdown: InventoryProductLocation[]
@@ -95,6 +96,11 @@ export type InventoryDashboardData = {
     pendingReceipts: number
     pendingDeliveries: number
     scheduledTransfers: number
+    totalInventoryValue: number
+  }
+  charts: {
+    stockByCategory: Array<{ category: string; value: number }>
+    recentFlow: Array<{ date: string; receipts: number; deliveries: number }>
   }
   recentMoves: InventoryMoveRecord[]
   filterOptions: InventoryReferenceData
@@ -118,6 +124,7 @@ type ProductRow = {
   category: string
   unit_of_measure: string
   reorder_point: number
+  price_in_cents: number
   created_at: string
   updated_at: string
   total_available: number
@@ -304,6 +311,7 @@ export async function listInventoryProducts(
       p.category,
       p.unit_of_measure,
       p.reorder_point,
+      p.price_in_cents,
       p.created_at,
       p.updated_at,
       COALESCE(SUM(ss.available), 0)::int AS total_available
@@ -318,6 +326,7 @@ export async function listInventoryProducts(
       p.category,
       p.unit_of_measure,
       p.reorder_point,
+      p.price_in_cents,
       p.created_at,
       p.updated_at
     ORDER BY p.created_at ASC
@@ -330,6 +339,7 @@ export async function listInventoryProducts(
     category: row.category,
     unitOfMeasure: row.unit_of_measure,
     reorderPoint: Number(row.reorder_point),
+    priceInCents: Number(row.price_in_cents),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     totalAvailable: Number(row.total_available),
@@ -556,8 +566,64 @@ export async function getInventoryDashboardData(
       pendingReceipts: pendingCountsByType.get("receipt") ?? 0,
       pendingDeliveries: pendingCountsByType.get("delivery") ?? 0,
       scheduledTransfers: pendingCountsByType.get("internal_transfer") ?? 0,
+      totalInventoryValue: products.reduce(
+        (acc, p) => acc + Math.max(0, p.totalAvailable) * p.priceInCents,
+        0
+      ),
+    },
+    charts: {
+      stockByCategory: getCategoryDistribution(products),
+      recentFlow: getRecentFlow(recentMoves),
     },
     recentMoves,
     filterOptions,
   }
+}
+
+// Charting helpers
+function getCategoryDistribution(products: InventoryProductRecord[]) {
+  const dist = new Map<string, number>()
+  for (const p of products) {
+    if (p.totalAvailable > 0) {
+      const current = dist.get(p.category) ?? 0
+      dist.set(p.category, current + p.totalAvailable)
+    }
+  }
+
+  // Convert to array and take top 5 categories
+  return Array.from(dist.entries())
+    .map(([category, value]) => ({ category, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+}
+
+function getRecentFlow(moves: InventoryMoveRecord[]) {
+  const days = 7
+  const result = []
+
+  // Initialize last 7 days including today
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    result.push({
+      date: d.toLocaleDateString("en-IN", { month: "short", day: "numeric" }),
+      receipts: 0,
+      deliveries: 0,
+      _dateStr: d.toISOString().split("T")[0],
+    })
+  }
+
+  // Aggregate done moves
+  for (const move of moves) {
+    if (move.status !== "done") continue
+    const moveDateStr = move.createdAt.split("T")[0]
+    const dayBucket = result.find((r) => r._dateStr === moveDateStr)
+    if (dayBucket) {
+      if (move.moveType === "receipt") dayBucket.receipts += move.quantity
+      if (move.moveType === "delivery") dayBucket.deliveries += move.quantity
+    }
+  }
+
+  // Remove the temporary _dateStr key
+  return result.map(({ date, receipts, deliveries }) => ({ date, receipts, deliveries }))
 }

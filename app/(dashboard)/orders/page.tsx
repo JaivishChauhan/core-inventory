@@ -1,7 +1,28 @@
 "use client"
 
 import { useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  AlertCircle,
+  Ban,
+  CheckCircle,
+  History,
+  MoreHorizontal,
+  Search,
+} from "lucide-react"
+import { toast } from "sonner"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -10,23 +31,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { History, AlertCircle, Search, Plus, Download, SlidersHorizontal } from "lucide-react"
 import { MOVE_STATUS_CONFIG, MOVE_TYPE_LABELS } from "@/lib/constants"
 
-type StockMove = {
+type MoveRecord = {
   id: string
-  product_id: string
-  move_type: keyof typeof MOVE_TYPE_LABELS
-  status: keyof typeof MOVE_STATUS_CONFIG
+  productName: string
+  sku: string
   quantity: number
+  moveType: keyof typeof MOVE_TYPE_LABELS
+  status: keyof typeof MOVE_STATUS_CONFIG
   reference: string | null
-  created_at: string
-  validated_at: string | null
+  createdAt: string
+  sourceLocationName: string
+  sourceWarehouseName: string | null
+  destLocationName: string
+  destWarehouseName: string | null
 }
 
 const STATUS_BADGE_CLASSES: Record<keyof typeof MOVE_STATUS_CONFIG, string> = {
@@ -37,20 +56,29 @@ const STATUS_BADGE_CLASSES: Record<keyof typeof MOVE_STATUS_CONFIG, string> = {
   canceled: "bg-red-500/10 text-red-500 border-red-500/20",
 }
 
+/**
+ * OrdersPage — displays all stock moves as an "orders" view.
+ * Shows real product/route data (no hardcoded customer/payment columns).
+ * Includes validate/cancel actions for actionable moves.
+ * @client Required for query state, mutations, and interactive filtering.
+ */
 export default function OrdersPage() {
+  const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
 
-  const { data, isLoading, isError } = useQuery<{ moves: StockMove[] }>({
-    queryKey: ["move-history"],
-    queryFn: () => fetch("/api/inventory/move").then((r) => r.json()),
+  const { data, isLoading, isError } = useQuery<{ moves: MoveRecord[] }>({
+    queryKey: ["orders"],
+    queryFn: () =>
+      fetch("/api/inventory/move").then(
+        (r) => r.json() as Promise<{ moves: MoveRecord[] }>
+      ),
     staleTime: 15_000,
     refetchInterval: 30_000,
   })
 
   const moves = data?.moves ?? []
 
-  // Calculate status counts
   const statusCounts = {
     all: moves.length,
     draft: moves.filter((m) => m.status === "draft").length,
@@ -59,120 +87,111 @@ export default function OrdersPage() {
     done: moves.filter((m) => m.status === "done").length,
   }
 
-  // Filter moves based on active tab
   const filteredMoves = moves.filter((move) => {
     if (activeTab !== "all" && move.status !== activeTab) return false
-    if (searchQuery && !move.reference?.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      const matchesReference = move.reference?.toLowerCase().includes(query)
+      const matchesProduct = move.productName.toLowerCase().includes(query)
+      const matchesSku = move.sku.toLowerCase().includes(query)
+      if (!matchesReference && !matchesProduct && !matchesSku) return false
     }
     return true
   })
 
+  const validateMoveMutation = useMutation({
+    mutationFn: async (moveId: string) => {
+      const res = await fetch(`/api/inventory/move/${moveId}/validate`, {
+        method: "PATCH",
+      })
+      const responseData = (await res.json()) as { error?: string }
+      if (!res.ok)
+        throw new Error(responseData.error ?? "Failed to validate move")
+      return responseData
+    },
+    onSuccess: () => {
+      toast.success("Move validated successfully.")
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const cancelMoveMutation = useMutation({
+    mutationFn: async (moveId: string) => {
+      const res = await fetch(`/api/inventory/move/${moveId}/cancel`, {
+        method: "PATCH",
+      })
+      const responseData = (await res.json()) as { error?: string }
+      if (!res.ok)
+        throw new Error(responseData.error ?? "Failed to cancel move")
+      return responseData
+    },
+    onSuccess: () => {
+      toast.success("Move canceled.")
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const isActionableStatus = (moveStatus: string) =>
+    ["draft", "waiting", "ready"].includes(moveStatus)
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Order list</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+          <span className="text-gradient">Orders</span>
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Track and manage all stock movements across your inventory.
+        </p>
       </div>
 
       {/* Status Tabs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <button
-          onClick={() => setActiveTab("all")}
-          className={`rounded-xl border p-4 text-left transition-all ${
-            activeTab === "all"
-              ? "border-blue-500/50 bg-blue-500/10"
-              : "border-border/50 bg-card/50 hover:bg-card"
-          }`}
-        >
-          <div className="space-y-1">
-            <p className="text-2xl font-bold">{statusCounts.all}</p>
-            <p className="text-xs text-muted-foreground">All orders</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("draft")}
-          className={`rounded-xl border p-4 text-left transition-all ${
-            activeTab === "draft"
-              ? "border-blue-500/50 bg-blue-500/10"
-              : "border-border/50 bg-card/50 hover:bg-card"
-          }`}
-        >
-          <div className="space-y-1">
-            <p className="text-2xl font-bold">{statusCounts.draft}</p>
-            <p className="text-xs text-muted-foreground">New orders</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("waiting")}
-          className={`rounded-xl border p-4 text-left transition-all ${
-            activeTab === "waiting"
-              ? "border-amber-500/50 bg-amber-500/10"
-              : "border-border/50 bg-card/50 hover:bg-card"
-          }`}
-        >
-          <div className="space-y-1">
-            <p className="text-2xl font-bold">{statusCounts.waiting}</p>
-            <p className="text-xs text-muted-foreground">Awaiting processing</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("ready")}
-          className={`rounded-xl border p-4 text-left transition-all ${
-            activeTab === "ready"
-              ? "border-yellow-500/50 bg-yellow-500/10"
-              : "border-border/50 bg-card/50 hover:bg-card"
-          }`}
-        >
-          <div className="space-y-1">
-            <p className="text-2xl font-bold">{statusCounts.ready}</p>
-            <p className="text-xs text-muted-foreground">On delivery</p>
-          </div>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("done")}
-          className={`rounded-xl border p-4 text-left transition-all ${
-            activeTab === "done"
-              ? "border-emerald-500/50 bg-emerald-500/10"
-              : "border-border/50 bg-card/50 hover:bg-card"
-          }`}
-        >
-          <div className="space-y-1">
-            <p className="text-2xl font-bold">{statusCounts.done}</p>
-            <p className="text-xs text-muted-foreground">Delivered orders</p>
-          </div>
-        </button>
+        {([
+          { key: "all", label: "All orders", color: "blue" },
+          { key: "draft", label: "New orders", color: "blue" },
+          { key: "waiting", label: "Awaiting processing", color: "amber" },
+          { key: "ready", label: "Ready to ship", color: "yellow" },
+          { key: "done", label: "Completed", color: "emerald" },
+        ] as const).map(({ key, label, color }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={`rounded-xl border p-4 text-left transition-all ${
+              activeTab === key
+                ? `border-${color}-500/50 bg-${color}-500/10`
+                : "border-border/50 bg-card/50 hover:bg-card"
+            }`}
+          >
+            <div className="space-y-1">
+              <p className="text-2xl font-bold">
+                {statusCounts[key as keyof typeof statusCounts]}
+              </p>
+              <p className="text-xs text-muted-foreground">{label}</p>
+            </div>
+          </button>
+        ))}
       </div>
 
       <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
         <CardContent className="p-6">
-          {/* Toolbar */}
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1">
+          {/* Search */}
+          <div className="mb-6">
+            <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search"
+                placeholder="Search by product, SKU, or reference..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 size-4" />
-                Export
-              </Button>
-              <Button variant="outline" size="sm">
-                <SlidersHorizontal className="mr-2 size-4" />
-                Sort: default
-              </Button>
-              <Button size="sm">
-                <Plus className="mr-2 size-4" />
-                Add order
-              </Button>
             </div>
           </div>
 
@@ -181,16 +200,13 @@ export default function OrdersPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-border/50 bg-muted/20 hover:bg-muted/20">
-                  <TableHead className="w-12">
-                    <input type="checkbox" className="rounded" />
-                  </TableHead>
-                  <TableHead>ORDER NUMBER</TableHead>
-                  <TableHead>CUSTOMER</TableHead>
-                  <TableHead>CATEGORY</TableHead>
-                  <TableHead>PRICE</TableHead>
-                  <TableHead>DATE</TableHead>
-                  <TableHead>PAYMENT</TableHead>
-                  <TableHead>STATUS</TableHead>
+                  <TableHead className="pl-6">Reference</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Route</TableHead>
+                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -198,7 +214,7 @@ export default function OrdersPage() {
                 {isLoading ? (
                   Array.from({ length: 8 }).map((_, i) => (
                     <TableRow key={i} className="border-border/50">
-                      {Array.from({ length: 9 }).map((_, j) => (
+                      {Array.from({ length: 8 }).map((_, j) => (
                         <TableCell key={j}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
@@ -207,19 +223,24 @@ export default function OrdersPage() {
                   ))
                 ) : isError ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="py-16 text-center text-destructive">
+                    <TableCell
+                      colSpan={8}
+                      className="py-16 text-center text-destructive"
+                    >
                       <div className="flex flex-col items-center gap-2">
                         <AlertCircle className="size-8" />
-                        <span>Failed to load history. Please refresh.</span>
+                        <span>Failed to load orders. Please refresh.</span>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : filteredMoves.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9}>
+                    <TableCell colSpan={8}>
                       <div className="flex flex-col items-center gap-3 py-16 text-center">
                         <History className="size-10 text-muted-foreground/40" />
-                        <p className="font-medium text-muted-foreground">No movements found</p>
+                        <p className="font-medium text-muted-foreground">
+                          No movements found
+                        </p>
                         <p className="text-sm text-muted-foreground/60">
                           Try adjusting your filters or search query.
                         </p>
@@ -232,37 +253,47 @@ export default function OrdersPage() {
                       key={move.id}
                       className="border-border/50 transition-colors hover:bg-muted/10"
                     >
-                      <TableCell>
-                        <input type="checkbox" className="rounded" />
-                      </TableCell>
-                      <TableCell>
+                      <TableCell className="pl-6">
                         <span className="font-mono text-sm font-medium">
                           #{move.reference ?? move.id.slice(0, 8).toUpperCase()}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">Kris Poyer</p>
-                          <p className="text-xs text-muted-foreground">kris.poyer@mail.com</p>
-                        </div>
+                        <Badge variant="secondary">
+                          {MOVE_TYPE_LABELS[move.moveType]}
+                        </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm">{MOVE_TYPE_LABELS[move.move_type]}</span>
+                        <p className="font-semibold">{move.productName}</p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {move.sku}
+                        </p>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-mono font-semibold">$ {move.quantity * 100}</span>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {move.sourceLocationName}
+                        {move.sourceWarehouseName
+                          ? ` (${move.sourceWarehouseName})`
+                          : ""}
+                        {" → "}
+                        {move.destLocationName}
+                        {move.destWarehouseName
+                          ? ` (${move.destWarehouseName})`
+                          : ""}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        {move.quantity}
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
-                          {new Date(move.created_at).toLocaleDateString("en-US", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                          })}
+                          {new Date(move.createdAt).toLocaleDateString(
+                            "en-IN",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          )}
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">PayPal</span>
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -273,28 +304,46 @@ export default function OrdersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm">
-                          •••
-                        </Button>
+                        {isActionableStatus(move.status) ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="size-8 p-0"
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  validateMoveMutation.mutate(move.id)
+                                }
+                                disabled={validateMoveMutation.isPending}
+                              >
+                                <CheckCircle className="mr-2 size-3.5 text-emerald-600" />
+                                Validate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  cancelMoveMutation.mutate(move.id)
+                                }
+                                disabled={cancelMoveMutation.isPending}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Ban className="mr-2 size-3.5" />
+                                Cancel
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
-          </div>
-
-          {/* Pagination */}
-          <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-            <span>1 of 18</span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                &lt;
-              </Button>
-              <Button variant="outline" size="sm">
-                &gt;
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>

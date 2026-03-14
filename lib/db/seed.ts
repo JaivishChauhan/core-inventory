@@ -67,11 +67,11 @@ async function seed() {
 
   // 4. Products
   const productData = [
-    { name: "Steel Rods 12mm", sku: "STL-ROD-12", category: "Raw Materials", unit_of_measure: "kg", reorder_point: 500 },
-    { name: "Timber Planks 2x4", sku: "TMB-PLK-24", category: "Raw Materials", unit_of_measure: "piece", reorder_point: 200 },
-    { name: "Cement Bags 50kg", sku: "CMT-BAG-50", category: "Construction", unit_of_measure: "bag", reorder_point: 100 },
-    { name: "Copper Wire 2.5mm", sku: "CPR-WIR-25", category: "Electrical", unit_of_measure: "m", reorder_point: 1000 },
-    { name: "PVC Pipe 4-inch", sku: "PVC-PIP-4I", category: "Plumbing", unit_of_measure: "m", reorder_point: 300 },
+    { name: "Steel Rods 12mm", sku: "STL-ROD-12", category: "Raw Materials", unit_of_measure: "kg", reorder_point: 500, price_in_cents: 6500 }, // ₹65.00
+    { name: "Timber Planks 2x4", sku: "TMB-PLK-24", category: "Raw Materials", unit_of_measure: "piece", reorder_point: 200, price_in_cents: 35000 }, // ₹350.00
+    { name: "Cement Bags 50kg", sku: "CMT-BAG-50", category: "Construction", unit_of_measure: "bag", reorder_point: 100, price_in_cents: 40000 }, // ₹400.00
+    { name: "Copper Wire 2.5mm", sku: "CPR-WIR-25", category: "Electrical", unit_of_measure: "m", reorder_point: 1000, price_in_cents: 4500 }, // ₹45.00
+    { name: "PVC Pipe 4-inch", sku: "PVC-PIP-4I", category: "Plumbing", unit_of_measure: "m", reorder_point: 300, price_in_cents: 60000 }, // ₹600.00
   ]
 
   const productMap: Record<string, string> = {}

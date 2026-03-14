@@ -97,6 +97,7 @@ export const products = pgTable("products", {
   category: text("category").notNull(),
   unit_of_measure: text("unit_of_measure").notNull(),
   reorder_point: integer("reorder_point").default(0).notNull(),
+  price_in_cents: integer("price_in_cents").default(0).notNull(),
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 })

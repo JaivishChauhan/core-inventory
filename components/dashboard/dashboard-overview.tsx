@@ -1,15 +1,19 @@
 "use client"
 
 import { useMemo, useState, type ReactNode } from "react"
+import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import {
   Activity,
   AlertTriangle,
   ArrowLeftRight,
+  ClipboardCheck,
   Clock3,
   Filter,
+  IndianRupee,
   Package,
   PackagePlus,
+  Plus,
   Truck,
 } from "lucide-react"
 
@@ -23,7 +27,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts"
 import { MOVE_STATUS_CONFIG, MOVE_TYPE_LABELS } from "@/lib/constants"
+
+function formatINR(valueInCents: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(valueInCents / 100)
+}
 
 type DashboardLocation = {
   id: string
@@ -41,6 +66,11 @@ type DashboardData = {
     pendingReceipts: number
     pendingDeliveries: number
     scheduledTransfers: number
+    totalInventoryValue: number
+  }
+  charts: {
+    stockByCategory: Array<{ category: string; value: number }>
+    recentFlow: Array<{ date: string; receipts: number; deliveries: number }>
   }
   recentMoves: Array<{
     id: string
@@ -81,16 +111,18 @@ function KpiCard({
   value,
   description,
   icon,
+  href,
   accentClassName,
 }: {
   title: string
   value: number
   description: string
   icon: ReactNode
+  href?: string
   accentClassName?: string
 }) {
-  return (
-    <Card className="card-hover group relative overflow-hidden border-border/60 shadow-soft">
+  const content = (
+    <Card className={`card-hover group relative overflow-hidden border-border/60 shadow-soft ${href ? "cursor-pointer" : ""}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -100,7 +132,9 @@ function KpiCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-3xl font-extrabold tracking-tight">{value}</div>
+        <div className="text-3xl font-extrabold tracking-tight">
+          {title === "Total Inventory Value" ? formatINR(value * 100) : value}
+        </div>
         <p className="mt-1.5 text-xs text-muted-foreground">{description}</p>
       </CardContent>
       <div
@@ -108,6 +142,12 @@ function KpiCard({
       />
     </Card>
   )
+
+  if (href) {
+    return <Link href={href}>{content}</Link>
+  }
+
+  return content
 }
 
 export function DashboardOverview() {
@@ -161,7 +201,16 @@ export function DashboardOverview() {
     pendingReceipts: 0,
     pendingDeliveries: 0,
     scheduledTransfers: 0,
+    totalInventoryValue: 0,
   }
+
+  const charts = data?.charts ?? {
+    stockByCategory: [],
+    recentFlow: [],
+  }
+
+  // Define colors for the Pie chart
+  const PIE_COLORS = ["#4f46e5", "#0ea5e9", "#10b981", "#8b5cf6", "#f43f5e"]
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -321,12 +370,14 @@ export function DashboardOverview() {
           value={kpis.totalProducts}
           description="Catalog items with available inventory"
           icon={<Package className="size-5" />}
+          href="/products"
         />
         <KpiCard
           title="Low Stock"
           value={kpis.lowStockCount}
           description="Products at or below reorder threshold"
           icon={<AlertTriangle className="size-5" />}
+          href="/products"
         />
         <KpiCard
           title="Out of Stock"
@@ -334,26 +385,159 @@ export function DashboardOverview() {
           description="Products with zero available quantity"
           icon={<AlertTriangle className="size-5" />}
           accentClassName="from-red-500 to-red-400"
+          href="/products"
         />
         <KpiCard
           title="Pending Receipts"
           value={kpis.pendingReceipts}
           description="Incoming stock waiting to be validated"
           icon={<PackagePlus className="size-5" />}
+          href="/operations/receipts"
         />
         <KpiCard
           title="Pending Deliveries"
           value={kpis.pendingDeliveries}
           description="Outgoing orders in draft, waiting, or ready"
           icon={<Truck className="size-5" />}
+          href="/operations/deliveries"
         />
         <KpiCard
           title="Scheduled Transfers"
           value={kpis.scheduledTransfers}
           description="Internal movements queued across warehouses"
           icon={<ArrowLeftRight className="size-5" />}
+          href="/operations/transfers"
+        />
+        <KpiCard
+          title="Total Inventory Value"
+          value={kpis.totalInventoryValue / 100}
+          description="Estimated holding value (based on current price)"
+          icon={<IndianRupee className="size-5" />}
+          accentClassName="from-emerald-600 to-teal-500"
         />
       </div>
+
+      {/* ─── Advanced Analytics Charts ─── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-border/60 shadow-soft">
+          <CardHeader>
+            <CardTitle className="text-base">Recent Inventory Flow</CardTitle>
+            <p className="text-xs text-muted-foreground">Receipts vs. Deliveries over the last 7 days</p>
+          </CardHeader>
+          <CardContent className="h-[300px] w-full pb-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={charts.recentFlow}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                  dy={10}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                />
+                <Tooltip
+                  cursor={{ fill: "rgba(0,0,0,0.04)" }}
+                  contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                />
+                <Legend
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: "12px", paddingTop: "20px" }}
+                />
+                <Bar dataKey="receipts" name="Receipts" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="deliveries" name="Deliveries" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 shadow-soft">
+          <CardHeader>
+            <CardTitle className="text-base">Stock Distribution</CardTitle>
+            <p className="text-xs text-muted-foreground">Top 5 categories by allocated quantity</p>
+          </CardHeader>
+          <CardContent className="flex h-[300px] w-full items-center justify-center pb-4">
+            {charts.stockByCategory.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                  <Pie
+                    data={charts.stockByCategory}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                    nameKey="category"
+                  >
+                    {charts.stockByCategory.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: "12px" }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="text-sm text-muted-foreground">No stock available across categories.</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ─── Quick Actions ─── */}
+      <Card className="border-border/60 shadow-soft">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/products">
+              <Plus className="size-4" />
+              New Product
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/operations/receipts">
+              <PackagePlus className="size-4" />
+              New Receipt
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/operations/deliveries">
+              <Truck className="size-4" />
+              New Delivery
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/operations/transfers">
+              <ArrowLeftRight className="size-4" />
+              New Transfer
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="gap-2">
+            <Link href="/operations/adjustments">
+              <ClipboardCheck className="size-4" />
+              New Adjustment
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card className="border-border/60 shadow-soft">
         <CardHeader className="border-b border-border/60">

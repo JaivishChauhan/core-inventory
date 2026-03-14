@@ -1,8 +1,8 @@
 import { and, asc, eq, sql } from "drizzle-orm"
 
 import { db } from "@/lib/db/connection"
-import { locations, products, stockMoves } from "@/lib/db/schema"
-import type { MoveStatus, MoveType } from "@/types/inventory"
+import { locations, products, stockMoves, warehouses } from "@/lib/db/schema"
+import type { LocationType, MoveStatus, MoveType } from "@/types/inventory"
 
 type InventoryExecutor = Pick<
   typeof db,
@@ -385,4 +385,308 @@ export async function applyInventoryAdjustment(
       countedQuantity: input.counted_quantity,
     }
   })
+}
+
+// ─── Product CRUD ───────────────────────────────────────────────────────────
+
+type UpdateProductInput = {
+  name?: string
+  category?: string
+  unit_of_measure?: string
+  reorder_point?: number
+}
+
+/**
+ * Updates an existing product's catalog fields.
+ * SKU is immutable after creation to preserve ledger references.
+ * @throws {InventoryMutationError} When product is not found.
+ */
+export async function updateProduct(productId: string, input: UpdateProductInput) {
+  const [existing] = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1)
+
+  if (!existing) {
+    throw new InventoryMutationError("Product not found.", 404)
+  }
+
+  const [updatedProduct] = await db
+    .update(products)
+    .set({
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.category !== undefined && { category: input.category }),
+      ...(input.unit_of_measure !== undefined && { unit_of_measure: input.unit_of_measure }),
+      ...(input.reorder_point !== undefined && { reorder_point: input.reorder_point }),
+      updated_at: new Date(),
+    })
+    .where(eq(products.id, productId))
+    .returning()
+
+  return updatedProduct
+}
+
+/**
+ * Deletes a product from the catalog.
+ * Blocks deletion if any stock moves reference this product (ledger integrity).
+ * @throws {InventoryMutationError} When product not found or has stock moves.
+ */
+export async function deleteProduct(productId: string) {
+  const [existing] = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(eq(products.id, productId))
+    .limit(1)
+
+  if (!existing) {
+    throw new InventoryMutationError("Product not found.", 404)
+  }
+
+  const moveCount = await db.execute<{ count: number }>(sql`
+    SELECT COUNT(*)::int AS count
+    FROM stock_moves
+    WHERE product_id = ${productId}
+  `)
+
+  if (Number(moveCount.rows[0]?.count ?? 0) > 0) {
+    throw new InventoryMutationError(
+      "Cannot delete a product that has stock moves. Archive it instead.",
+      409
+    )
+  }
+
+  await db.delete(products).where(eq(products.id, productId))
+}
+
+// ─── Warehouse CRUD ─────────────────────────────────────────────────────────
+
+type CreateWarehouseInput = {
+  name: string
+  code: string
+  address?: string
+}
+
+type UpdateWarehouseInput = {
+  name?: string
+  code?: string
+  address?: string | null
+}
+
+/**
+ * Creates a new warehouse entity.
+ * Code must be unique across all warehouses.
+ */
+export async function createWarehouse(input: CreateWarehouseInput) {
+  const [created] = await db
+    .insert(warehouses)
+    .values({
+      name: input.name,
+      code: input.code.toUpperCase().trim(),
+      address: input.address ?? null,
+    })
+    .returning()
+
+  return created
+}
+
+/**
+ * Updates an existing warehouse's fields.
+ * @throws {InventoryMutationError} When warehouse is not found.
+ */
+export async function updateWarehouse(warehouseId: string, input: UpdateWarehouseInput) {
+  const [existing] = await db
+    .select({ id: warehouses.id })
+    .from(warehouses)
+    .where(eq(warehouses.id, warehouseId))
+    .limit(1)
+
+  if (!existing) {
+    throw new InventoryMutationError("Warehouse not found.", 404)
+  }
+
+  const [updated] = await db
+    .update(warehouses)
+    .set({
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.code !== undefined && { code: input.code.toUpperCase().trim() }),
+      ...(input.address !== undefined && { address: input.address }),
+      updated_at: new Date(),
+    })
+    .where(eq(warehouses.id, warehouseId))
+    .returning()
+
+  return updated
+}
+
+/**
+ * Deletes a warehouse. Blocked if any child locations have stock moves.
+ * @throws {InventoryMutationError} When warehouse not found or has active locations.
+ */
+export async function deleteWarehouse(warehouseId: string) {
+  const [existing] = await db
+    .select({ id: warehouses.id })
+    .from(warehouses)
+    .where(eq(warehouses.id, warehouseId))
+    .limit(1)
+
+  if (!existing) {
+    throw new InventoryMutationError("Warehouse not found.", 404)
+  }
+
+  const moveCount = await db.execute<{ count: number }>(sql`
+    SELECT COUNT(*)::int AS count
+    FROM stock_moves sm
+    INNER JOIN locations l
+      ON l.id = sm.source_location_id OR l.id = sm.dest_location_id
+    WHERE l.warehouse_id = ${warehouseId}
+  `)
+
+  if (Number(moveCount.rows[0]?.count ?? 0) > 0) {
+    throw new InventoryMutationError(
+      "Cannot delete a warehouse with locations that have stock moves.",
+      409
+    )
+  }
+
+  // Cascade: delete child locations first, then the warehouse
+  await db.delete(locations).where(eq(locations.warehouse_id, warehouseId))
+  await db.delete(warehouses).where(eq(warehouses.id, warehouseId))
+}
+
+// ─── Location CRUD ──────────────────────────────────────────────────────────
+
+type CreateLocationInput = {
+  warehouse_id: string
+  name: string
+  type?: LocationType
+}
+
+type UpdateLocationInput = {
+  name?: string
+  type?: LocationType
+}
+
+/**
+ * Creates a new location inside a warehouse.
+ * Validates the parent warehouse exists.
+ */
+export async function createLocation(input: CreateLocationInput) {
+  const [warehouse] = await db
+    .select({ id: warehouses.id })
+    .from(warehouses)
+    .where(eq(warehouses.id, input.warehouse_id))
+    .limit(1)
+
+  if (!warehouse) {
+    throw new InventoryMutationError("Parent warehouse not found.", 404)
+  }
+
+  const [created] = await db
+    .insert(locations)
+    .values({
+      warehouse_id: input.warehouse_id,
+      name: input.name,
+      type: input.type ?? "internal",
+    })
+    .returning()
+
+  return created
+}
+
+/**
+ * Updates an existing location's name or type.
+ * @throws {InventoryMutationError} When location is not found.
+ */
+export async function updateLocation(locationId: string, input: UpdateLocationInput) {
+  const [existing] = await db
+    .select({ id: locations.id })
+    .from(locations)
+    .where(eq(locations.id, locationId))
+    .limit(1)
+
+  if (!existing) {
+    throw new InventoryMutationError("Location not found.", 404)
+  }
+
+  const [updated] = await db
+    .update(locations)
+    .set({
+      ...(input.name !== undefined && { name: input.name }),
+      ...(input.type !== undefined && { type: input.type }),
+    })
+    .where(eq(locations.id, locationId))
+    .returning()
+
+  return updated
+}
+
+/**
+ * Deletes a location. Blocked if any stock moves reference it.
+ * @throws {InventoryMutationError} When location not found or has stock moves.
+ */
+export async function deleteLocation(locationId: string) {
+  const [existing] = await db
+    .select({ id: locations.id })
+    .from(locations)
+    .where(eq(locations.id, locationId))
+    .limit(1)
+
+  if (!existing) {
+    throw new InventoryMutationError("Location not found.", 404)
+  }
+
+  const moveCount = await db.execute<{ count: number }>(sql`
+    SELECT COUNT(*)::int AS count
+    FROM stock_moves
+    WHERE source_location_id = ${locationId}
+       OR dest_location_id = ${locationId}
+  `)
+
+  if (Number(moveCount.rows[0]?.count ?? 0) > 0) {
+    throw new InventoryMutationError(
+      "Cannot delete a location that has stock moves. Remove the moves first.",
+      409
+    )
+  }
+
+  await db.delete(locations).where(eq(locations.id, locationId))
+}
+
+// ─── Stock Move Actions ─────────────────────────────────────────────────────
+
+/**
+ * Cancels a pending stock move (draft, waiting, or ready).
+ * Already-validated ('done') or already-canceled moves cannot be canceled.
+ * @throws {InventoryMutationError} When move not found or in terminal state.
+ */
+export async function cancelInventoryMove(moveId: string) {
+  const [move] = await db
+    .select()
+    .from(stockMoves)
+    .where(eq(stockMoves.id, moveId))
+    .limit(1)
+
+  if (!move) {
+    throw new InventoryMutationError("Stock move not found.", 404)
+  }
+
+  if (move.status === "done") {
+    throw new InventoryMutationError(
+      "Cannot cancel a validated move. It is already part of the ledger.",
+      409
+    )
+  }
+
+  if (move.status === "canceled") {
+    throw new InventoryMutationError("This move is already canceled.", 409)
+  }
+
+  const [canceledMove] = await db
+    .update(stockMoves)
+    .set({ status: "canceled" })
+    .where(eq(stockMoves.id, moveId))
+    .returning()
+
+  return canceledMove
 }

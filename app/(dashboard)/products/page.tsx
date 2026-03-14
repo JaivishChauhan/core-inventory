@@ -2,11 +2,21 @@
 
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { AlertTriangle, Boxes, Package, Search, Warehouse } from "lucide-react"
+import { AlertTriangle, Boxes, MoreHorizontal, Package, Pencil, Search, Trash2, Warehouse } from "lucide-react"
 
 import { CreateProductSheet } from "@/components/products/create-product-sheet"
+import { EditProductSheet } from "@/components/products/edit-product-sheet"
+import { DeleteProductDialog } from "@/components/products/delete-product-dialog"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -219,13 +229,14 @@ export default function ProductsPage() {
                 <TableHead className="text-right">Available</TableHead>
                 <TableHead>Location Availability</TableHead>
                 <TableHead className="pr-6 text-right">Reordering</TableHead>
+                <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, index) => (
                   <TableRow key={index} className="border-border/50">
-                    {Array.from({ length: 7 }).map((__, cellIndex) => (
+                    {Array.from({ length: 8 }).map((__, cellIndex) => (
                       <TableCell key={cellIndex} className={cellIndex === 0 ? "pl-6" : ""}>
                         <Skeleton className="h-4 w-full max-w-[10rem]" />
                       </TableCell>
@@ -234,13 +245,13 @@ export default function ProductsPage() {
                 ))
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center text-destructive">
+                  <TableCell colSpan={8} className="py-16 text-center text-destructive">
                     Failed to load products. Please refresh the page.
                   </TableCell>
                 </TableRow>
               ) : filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <div className="flex flex-col items-center gap-3 py-16 text-center">
                       <Package className="size-10 text-muted-foreground/40" />
                       <p className="font-medium text-muted-foreground">
@@ -337,6 +348,41 @@ export default function ProductsPage() {
                       ) : (
                         <span className="text-sm text-muted-foreground">Healthy</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="size-8 p-0">
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <EditProductSheet
+                            product={product}
+                            trigger={
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Pencil className="mr-2 size-3.5" />
+                                Edit Product
+                              </DropdownMenuItem>
+                            }
+                          />
+                          <DropdownMenuSeparator />
+                          <DeleteProductDialog
+                            productId={product.id}
+                            productName={product.name}
+                            sku={product.sku}
+                            trigger={
+                              <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 size-3.5" />
+                                Delete Product
+                              </DropdownMenuItem>
+                            }
+                          />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))

@@ -1,11 +1,19 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { History } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Ban, CheckCircle, History, MoreHorizontal } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Select,
   SelectContent,
@@ -56,6 +64,7 @@ type MoveResponse = {
 }
 
 export default function MoveHistoryPage() {
+  const queryClient = useQueryClient()
   const [moveType, setMoveType] = useState<MoveTypeFilter>("all")
   const [status, setStatus] = useState<StatusFilter>("all")
   const [warehouseId, setWarehouseId] = useState("all")
@@ -91,6 +100,45 @@ export default function MoveHistoryPage() {
     () => [moveType, status, warehouseId, category].filter((value) => value !== "all").length,
     [category, moveType, status, warehouseId]
   )
+
+  const validateMoveMutation = useMutation({
+    mutationFn: async (moveId: string) => {
+      const res = await fetch(`/api/inventory/move/${moveId}/validate`, {
+        method: "PATCH",
+      })
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(data.error ?? "Failed to validate move")
+      return data
+    },
+    onSuccess: () => {
+      toast.success("Move validated successfully.")
+      queryClient.invalidateQueries({ queryKey: ["move-history"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const cancelMoveMutation = useMutation({
+    mutationFn: async (moveId: string) => {
+      const res = await fetch(`/api/inventory/move/${moveId}/cancel`, {
+        method: "PATCH",
+      })
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(data.error ?? "Failed to cancel move")
+      return data
+    },
+    onSuccess: () => {
+      toast.success("Move canceled.")
+      queryClient.invalidateQueries({ queryKey: ["move-history"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["products"] })
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
+
+  const isActionableMoveStatus = (moveStatus: string) =>
+    ["draft", "waiting", "ready"].includes(moveStatus)
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -186,25 +234,26 @@ export default function MoveHistoryPage() {
                 <TableHead>Product</TableHead>
                 <TableHead>Route</TableHead>
                 <TableHead className="text-right">Quantity</TableHead>
-                <TableHead className="pr-6 text-right">Date</TableHead>
+                <TableHead className="text-right">Date</TableHead>
+                <TableHead className="w-12 pr-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell colSpan={7} className="h-16 animate-pulse bg-muted/10" />
+                    <TableCell colSpan={8} className="h-16 animate-pulse bg-muted/10" />
                   </TableRow>
                 ))
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-16 text-center text-destructive">
+                  <TableCell colSpan={8} className="py-16 text-center text-destructive">
                     Failed to load history. Please refresh.
                   </TableCell>
                 </TableRow>
               ) : moves.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <div className="flex flex-col items-center gap-3 py-16 text-center">
                       <History className="size-10 text-muted-foreground/40" />
                       <p className="font-medium text-muted-foreground">
@@ -254,7 +303,7 @@ export default function MoveHistoryPage() {
                     <TableCell className="text-right font-mono font-semibold">
                       {move.quantity}
                     </TableCell>
-                    <TableCell className="pr-6 text-right text-sm text-muted-foreground">
+                    <TableCell className="pr-2 text-right text-sm text-muted-foreground">
                       {new Date(move.createdAt).toLocaleString("en-IN", {
                         day: "numeric",
                         month: "short",
@@ -262,6 +311,34 @@ export default function MoveHistoryPage() {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
+                    </TableCell>
+                    <TableCell className="pr-6">
+                      {isActionableMoveStatus(move.status) ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="size-8 p-0">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => validateMoveMutation.mutate(move.id)}
+                              disabled={validateMoveMutation.isPending}
+                            >
+                              <CheckCircle className="mr-2 size-3.5 text-emerald-600" />
+                              Validate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => cancelMoveMutation.mutate(move.id)}
+                              disabled={cancelMoveMutation.isPending}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Ban className="mr-2 size-3.5" />
+                              Cancel Move
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
                     </TableCell>
                   </TableRow>
                 ))
