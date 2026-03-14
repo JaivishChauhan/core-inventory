@@ -154,16 +154,16 @@ export function AdjustmentWorkspace() {
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button className="btn-lift rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md">
+            <Button className="btn-lift rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md glow-blue">
               <Plus className="mr-2 size-4" />
               New Adjustment
             </Button>
           </SheetTrigger>
 
-          <SheetContent side="right" className="sm:max-w-xl">
+          <SheetContent side="right" className="sm:max-w-xl panel glass">
             <SheetHeader>
               <div className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                <div className="rounded-xl bg-white/5 p-2.5 text-indigo-400">
                   <ClipboardCheck className="size-5" />
                 </div>
                 <div>
@@ -176,13 +176,13 @@ export function AdjustmentWorkspace() {
             </SheetHeader>
 
             <div className="mt-6 flex h-[calc(100%-4rem)] flex-col gap-4">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 bg-white/5 p-4 rounded-xl border border-white/10">
                 <Label>Product</Label>
                 <Select value={productId} onValueChange={setProductId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-transparent text-white">
                     <SelectValue placeholder="Select a product" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="panel glass text-white">
                     {referenceData?.products.map((product) => (
                       <SelectItem key={product.id} value={product.id}>
                         {product.name} ({product.sku}) — {product.totalAvailable} available
@@ -192,13 +192,13 @@ export function AdjustmentWorkspace() {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 bg-white/5 p-4 rounded-xl border border-white/10">
                 <Label>Location</Label>
                 <Select value={locationId} onValueChange={setLocationId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-transparent text-white">
                     <SelectValue placeholder="Select an internal location" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="panel glass text-white">
                     {referenceData?.internalLocations.map((location) => (
                       <SelectItem key={location.id} value={location.id}>
                         {location.name} ({location.warehouseName})
@@ -208,12 +208,13 @@ export function AdjustmentWorkspace() {
                 </Select>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 bg-white/5 p-4 rounded-xl border border-white/10">
                 <Label htmlFor="counted-quantity">Counted Quantity</Label>
                 <Input
                   id="counted-quantity"
                   type="number"
                   min={0}
+                  className="bg-transparent text-white"
                   value={countedQuantity}
                   onChange={(event) => setCountedQuantity(event.target.value)}
                 />
@@ -222,20 +223,22 @@ export function AdjustmentWorkspace() {
                 </p>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 bg-white/5 p-4 rounded-xl border border-white/10">
                 <Label htmlFor="adjustment-reference">Reference</Label>
                 <Input
                   id="adjustment-reference"
+                  className="bg-transparent text-white"
                   placeholder="COUNT-MAR-14 / DAMAGE-07"
                   value={reference}
                   onChange={(event) => setReference(event.target.value)}
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 bg-white/5 p-4 rounded-xl border border-white/10">
                 <Label htmlFor="adjustment-notes">Notes</Label>
                 <Input
                   id="adjustment-notes"
+                  className="bg-transparent text-white"
                   placeholder="Optional reason for the count change"
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
@@ -248,7 +251,7 @@ export function AdjustmentWorkspace() {
                   disabled={
                     createAdjustmentMutation.isPending || isLoadingReferenceData
                   }
-                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white glow-blue"
                 >
                   {createAdjustmentMutation.isPending ? (
                     <>
@@ -259,7 +262,7 @@ export function AdjustmentWorkspace() {
                     "Apply Adjustment"
                   )}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                <Button type="button" variant="outline" className="panel glass text-white hover:bg-white/10" onClick={() => setOpen(false)}>
                   Cancel
                 </Button>
               </div>
@@ -268,34 +271,34 @@ export function AdjustmentWorkspace() {
         </Sheet>
       </div>
 
-      <Card className="border-border/60 shadow-soft">
+      <Card className="panel glass border-border/60 shadow-soft">
         <CardContent className="p-0">
           <Table>
-            <TableHeader>
-              <TableRow className="border-border/50 bg-muted/20">
-                <TableHead className="pl-6">Reference</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Delta</TableHead>
-                <TableHead className="pr-6">Date</TableHead>
+            <TableHeader className="bg-white/5">
+              <TableRow className="border-border/50">
+                <TableHead className="pl-6 text-muted-foreground">Reference</TableHead>
+                <TableHead className="text-muted-foreground">Product</TableHead>
+                <TableHead className="text-muted-foreground">Route</TableHead>
+                <TableHead className="text-muted-foreground">Status</TableHead>
+                <TableHead className="text-right text-muted-foreground">Delta</TableHead>
+                <TableHead className="pr-6 text-muted-foreground">Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 4 }).map((_, index) => (
-                  <TableRow key={index}>
-                    <TableCell colSpan={6} className="h-16 animate-pulse bg-muted/10" />
+                  <TableRow key={index} className="border-border/50">
+                    <TableCell colSpan={6} className="h-16 animate-pulse bg-white/5" />
                   </TableRow>
                 ))
               ) : isError ? (
-                <TableRow>
+                <TableRow className="border-border/50">
                   <TableCell colSpan={6} className="py-16 text-center text-destructive">
                     Failed to load adjustments. Please refresh.
                   </TableCell>
                 </TableRow>
               ) : moves.length === 0 ? (
-                <TableRow>
+                <TableRow className="border-border/50">
                   <TableCell colSpan={6}>
                     <div className="flex flex-col items-center gap-3 py-16 text-center">
                       <ClipboardCheck className="size-10 text-muted-foreground/40" />
@@ -310,12 +313,12 @@ export function AdjustmentWorkspace() {
                 </TableRow>
               ) : (
                 moves.map((move) => (
-                  <TableRow key={move.id} className="border-border/50">
-                    <TableCell className="pl-6 font-mono text-xs">
+                  <TableRow key={move.id} className="border-border/50 bg-white/5 transition-colors hover:bg-white/10">
+                    <TableCell className="pl-6 font-mono text-xs text-white">
                       {move.reference ?? move.id.slice(0, 8).toUpperCase()}
                     </TableCell>
                     <TableCell>
-                      <p className="font-semibold">{move.productName}</p>
+                      <p className="font-semibold text-white">{move.productName}</p>
                       <p className="font-mono text-xs text-muted-foreground">{move.sku}</p>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -326,11 +329,11 @@ export function AdjustmentWorkspace() {
                       {move.destWarehouseName ? ` (${move.destWarehouseName})` : ""}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={move.status === "done" ? "success" : "outline"}>
+                      <Badge variant={move.status === "done" ? "success" : "outline"} className={move.status === "done" ? "" : "border-white/20 text-white"}>
                         {MOVE_STATUS_CONFIG[move.status].label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-mono font-semibold">
+                    <TableCell className="text-right font-mono font-semibold text-white">
                       {move.quantity}
                     </TableCell>
                     <TableCell className="pr-6 text-sm text-muted-foreground">

@@ -101,6 +101,7 @@ export type InventoryDashboardData = {
   charts: {
     stockByCategory: Array<{ category: string; value: number }>
     recentFlow: Array<{ date: string; receipts: number; deliveries: number }>
+    topProducts: Array<{ name: string; quantity: number }>
   }
   recentMoves: InventoryMoveRecord[]
   filterOptions: InventoryReferenceData
@@ -574,6 +575,7 @@ export async function getInventoryDashboardData(
     charts: {
       stockByCategory: getCategoryDistribution(products),
       recentFlow: getRecentFlow(recentMoves),
+      topProducts: getTopProducts(products),
     },
     recentMoves,
     filterOptions,
@@ -595,6 +597,13 @@ function getCategoryDistribution(products: InventoryProductRecord[]) {
     .map(([category, value]) => ({ category, value }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 5)
+}
+
+function getTopProducts(products: InventoryProductRecord[]) {
+  return [...products]
+    .sort((a, b) => b.totalAvailable - a.totalAvailable)
+    .slice(0, 10)
+    .map(p => ({ name: p.name, quantity: p.totalAvailable }))
 }
 
 function getRecentFlow(moves: InventoryMoveRecord[]) {

@@ -368,7 +368,7 @@ export function MoveWorkspace({ moveType }: { moveType: MoveType }) {
 
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
-            <Button className="btn-lift rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md">
+            <Button className="btn-lift rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md glow-blue">
               <Plus className="mr-2 size-4" />
               {config.buttonLabel}
             </Button>
@@ -377,7 +377,7 @@ export function MoveWorkspace({ moveType }: { moveType: MoveType }) {
           <SheetContent side="right" className="sm:max-w-xl">
             <SheetHeader>
               <div className="flex flex-row items-center gap-3">
-                <div className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
+                <div className="rounded-xl bg-white/5 p-2.5 text-indigo-400">
                   <Icon className="size-5" />
                 </div>
                 <div>
@@ -504,7 +504,7 @@ export function MoveWorkspace({ moveType }: { moveType: MoveType }) {
                     isLoadingReferenceData ||
                     products.length === 0
                   }
-                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white glow-blue"
                 >
                   {createMoveMutation.isPending ? (
                     <>
@@ -546,11 +546,11 @@ export function MoveWorkspace({ moveType }: { moveType: MoveType }) {
         </p>
       </div>
 
-      <Card className="border-border/60 shadow-soft">
+      <Card className="panel glass border-0">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-border/50 bg-muted/20">
+              <TableRow className="border-b border-border/50 bg-white/5">
                 <TableHead className="pl-6">Reference</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>Route</TableHead>
@@ -564,7 +564,7 @@ export function MoveWorkspace({ moveType }: { moveType: MoveType }) {
               {isLoadingMoves ? (
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
-                    <TableCell colSpan={7} className="h-16 animate-pulse bg-muted/10" />
+                    <TableCell colSpan={7} className="h-16 animate-pulse bg-white/5" />
                   </TableRow>
                 ))
               ) : isError ? (

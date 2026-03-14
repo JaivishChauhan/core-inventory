@@ -86,7 +86,7 @@ export default function SettingsPage() {
         </div>
         <WarehouseDialog
           trigger={
-            <Button className="btn-lift rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md">
+            <Button className="btn-lift glow-blue rounded-full">
               <Plus className="mr-2 size-4" />
               New Warehouse
             </Button>
@@ -141,7 +141,7 @@ export default function SettingsPage() {
       {isLoading ? (
         <div className="grid gap-4">
           {Array.from({ length: 2 }).map((_, i) => (
-            <Card key={i} className="border-border/40">
+            <Card key={i} className="panel glass">
               <CardHeader>
                 <Skeleton className="h-6 w-48" />
               </CardHeader>
@@ -152,7 +152,7 @@ export default function SettingsPage() {
           ))}
         </div>
       ) : warehouseList.length === 0 ? (
-        <Card className="border-border/40">
+        <Card className="panel glass">
           <CardContent className="flex flex-col items-center gap-3 py-16 text-center">
             <Warehouse className="size-10 text-muted-foreground/40" />
             <p className="font-medium text-muted-foreground">No warehouses yet</p>
@@ -169,7 +169,7 @@ export default function SettingsPage() {
             )
 
             return (
-              <Card key={warehouse.id} className="border-border/40">
+              <Card key={warehouse.id} className="panel glass">
                 <CardHeader className="flex-row items-center justify-between pb-3">
                   <div className="flex items-center gap-3">
                     <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400">
@@ -289,7 +289,7 @@ export default function SettingsPage() {
       )}
 
       {/* ─── Tracked Categories ─── */}
-      <Card className="border-border/40">
+      <Card className="panel glass">
         <CardHeader>
           <CardTitle className="text-base">Tracked Categories</CardTitle>
         </CardHeader>

@@ -184,7 +184,7 @@ export default function LoginPage() {
         </div>
 
         {/* Auth card */}
-        <Card className="w-full border-border/50 shadow-soft">
+        <Card className="w-full panel glass">
           {forgotPasswordStep ? (
             <>
               <CardHeader className="pb-4">
@@ -219,7 +219,7 @@ export default function LoginPage() {
                     <Button
                       type="submit"
                       disabled={isResetLoading}
-                      className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                      className="w-full glow-blue rounded-lg transition-all hover:-translate-y-0.5 disabled:opacity-60"
                     >
                       {isResetLoading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -276,7 +276,7 @@ export default function LoginPage() {
                       <Button
                         type="submit"
                         disabled={isResetLoading || resetOtp.length < 6}
-                        className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                        className="w-full glow-blue rounded-lg transition-all hover:-translate-y-0.5 disabled:opacity-60"
                       >
                         {isResetLoading ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -357,7 +357,7 @@ export default function LoginPage() {
                       <Button
                         type="submit"
                         disabled={isLoginLoading}
-                        className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                        className="w-full glow-blue rounded-lg transition-all hover:-translate-y-0.5 disabled:opacity-60"
                       >
                         {isLoginLoading ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -414,7 +414,7 @@ export default function LoginPage() {
                       <Button
                         type="submit"
                         disabled={isSignupLoading}
-                        className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                        className="w-full glow-blue rounded-lg transition-all hover:-translate-y-0.5 disabled:opacity-60"
                       >
                         {isSignupLoading ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

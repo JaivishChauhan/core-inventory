@@ -74,7 +74,7 @@ function SummaryCard({
   description: string
 }) {
   return (
-    <Card className="card-hover border-border/60 shadow-soft">
+    <Card className="glass card-hover border-border/60 shadow-soft">
       <CardContent className="space-y-2 p-5">
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
         <p className="text-3xl font-extrabold tracking-tight">{value}</p>
@@ -174,7 +174,7 @@ export default function ProductsPage() {
         />
       </div>
 
-      <Card className="border-border/60 shadow-soft">
+      <Card className="glass border-border/60 shadow-soft">
         <CardContent className="space-y-4 p-4 sm:p-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
             <div className="relative w-full lg:max-w-sm">
@@ -219,176 +219,178 @@ export default function ProductsPage() {
             </Select>
           </div>
 
-          <Table className="data-dense">
-            <TableHeader>
-              <TableRow className="border-border/50 bg-muted/20">
-                <TableHead className="pl-6">SKU</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead className="text-right">Available</TableHead>
-                <TableHead>Location Availability</TableHead>
-                <TableHead className="pr-6 text-right">Reordering</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <TableRow key={index} className="border-border/50">
-                    {Array.from({ length: 8 }).map((__, cellIndex) => (
-                      <TableCell key={cellIndex} className={cellIndex === 0 ? "pl-6" : ""}>
-                        <Skeleton className="h-4 w-full max-w-[10rem]" />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="py-16 text-center text-destructive">
-                    Failed to load products. Please refresh the page.
-                  </TableCell>
+          <div className="panel glass overflow-hidden rounded-lg border border-border/50">
+            <Table className="data-dense">
+              <TableHeader>
+                <TableRow className="border-border/50 bg-muted/20">
+                  <TableHead className="pl-6">SKU</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead className="text-right">Available</TableHead>
+                  <TableHead>Location Availability</TableHead>
+                  <TableHead className="pr-6 text-right">Reordering</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
-              ) : filteredProducts.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8}>
-                    <div className="flex flex-col items-center gap-3 py-16 text-center">
-                      <Package className="size-10 text-muted-foreground/40" />
-                      <p className="font-medium text-muted-foreground">
-                        {debouncedSearch || categoryFilter !== "all" || stockFilter !== "all"
-                          ? "No products match the current filters."
-                          : "No products yet"}
-                      </p>
-                      <p className="text-sm text-muted-foreground/60">
-                        Create a product to start tracking inventory by location.
-                      </p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredProducts.map((product) => (
-                  <TableRow
-                    key={product.id}
-                    className="border-border/50 align-top transition-colors hover:bg-muted/20"
-                  >
-                    <TableCell className="pl-6">
-                      <Badge
-                        variant="secondary"
-                        className="rounded-md font-mono text-[11px] tracking-wider"
-                      >
-                        {product.sku}
-                      </Badge>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 6 }).map((_, index) => (
+                    <TableRow key={index} className="border-border/50">
+                      {Array.from({ length: 8 }).map((__, cellIndex) => (
+                        <TableCell key={cellIndex} className={cellIndex === 0 ? "pl-6" : ""}>
+                          <Skeleton className="h-4 w-full max-w-[10rem]" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : isError ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-16 text-center text-destructive">
+                      Failed to load products. Please refresh the page.
                     </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <p className="font-semibold">{product.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Reorder point: {product.reorderPoint}
+                  </TableRow>
+                ) : filteredProducts.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8}>
+                      <div className="flex flex-col items-center gap-3 py-16 text-center">
+                        <Package className="size-10 text-muted-foreground/40" />
+                        <p className="font-medium text-muted-foreground">
+                          {debouncedSearch || categoryFilter !== "all" || stockFilter !== "all"
+                            ? "No products match the current filters."
+                            : "No products yet"}
+                        </p>
+                        <p className="text-sm text-muted-foreground/60">
+                          Create a product to start tracking inventory by location.
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {product.category}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {product.unitOfMeasure}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="font-mono text-base font-semibold">
-                          {product.totalAvailable}
-                        </span>
-                        {product.isOutOfStock ? (
-                          <Badge variant="destructive">Out</Badge>
-                        ) : product.isLowStock ? (
-                          <Badge variant="warning">Low</Badge>
-                        ) : (
-                          <Badge variant="success">Healthy</Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {product.locationBreakdown.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {product.locationBreakdown.map((location) => (
-                            <div
-                              key={location.locationId}
-                              className="rounded-xl border border-border/60 bg-background px-3 py-2 shadow-sm"
-                            >
-                              <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                                <Warehouse className="size-3" />
-                                {location.warehouseName}
-                              </div>
-                              <p className="mt-1 text-sm font-semibold">
-                                {location.locationName}
-                              </p>
-                              <p className="font-mono text-xs text-muted-foreground">
-                                {location.available} available
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Boxes className="size-4" />
-                          No inventory posted yet
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="pr-6 text-right">
-                      {product.isOutOfStock ? (
-                        <div className="inline-flex items-center gap-1 text-sm font-semibold text-destructive">
-                          <AlertTriangle className="size-4" />
-                          Reorder now
-                        </div>
-                      ) : product.isLowStock ? (
-                        <Badge variant="warning" className="justify-end">
-                          At threshold
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">Healthy</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="size-8 p-0">
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <EditProductSheet
-                            product={product}
-                            trigger={
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                                <Pencil className="mr-2 size-3.5" />
-                                Edit Product
-                              </DropdownMenuItem>
-                            }
-                          />
-                          <DropdownMenuSeparator />
-                          <DeleteProductDialog
-                            productId={product.id}
-                            productName={product.name}
-                            sku={product.sku}
-                            trigger={
-                              <DropdownMenuItem
-                                onSelect={(e) => e.preventDefault()}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 size-3.5" />
-                                Delete Product
-                              </DropdownMenuItem>
-                            }
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filteredProducts.map((product) => (
+                    <TableRow
+                      key={product.id}
+                      className="border-border/50 align-top transition-colors hover:bg-muted/20"
+                    >
+                      <TableCell className="pl-6">
+                        <Badge
+                          variant="secondary"
+                          className="rounded-md font-mono text-[11px] tracking-wider"
+                        >
+                          {product.sku}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-semibold">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Reorder point: {product.reorderPoint}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {product.category}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {product.unitOfMeasure}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-mono text-base font-semibold">
+                            {product.totalAvailable}
+                          </span>
+                          {product.isOutOfStock ? (
+                            <Badge variant="destructive">Out</Badge>
+                          ) : product.isLowStock ? (
+                            <Badge variant="warning">Low</Badge>
+                          ) : (
+                            <Badge variant="success">Healthy</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {product.locationBreakdown.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {product.locationBreakdown.map((location) => (
+                              <div
+                                key={location.locationId}
+                                className="glass rounded-xl border border-border/60 px-3 py-2 shadow-sm"
+                              >
+                                <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                  <Warehouse className="size-3" />
+                                  {location.warehouseName}
+                                </div>
+                                <p className="mt-1 text-sm font-semibold">
+                                  {location.locationName}
+                                </p>
+                                <p className="font-mono text-xs text-muted-foreground">
+                                  {location.available} available
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Boxes className="size-4" />
+                            No inventory posted yet
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="pr-6 text-right">
+                        {product.isOutOfStock ? (
+                          <div className="inline-flex items-center gap-1 text-sm font-semibold text-destructive">
+                            <AlertTriangle className="size-4" />
+                            Reorder now
+                          </div>
+                        ) : product.isLowStock ? (
+                          <Badge variant="warning" className="justify-end">
+                            At threshold
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Healthy</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="glass size-8 p-0">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <EditProductSheet
+                              product={product}
+                              trigger={
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                  <Pencil className="mr-2 size-3.5" />
+                                  Edit Product
+                                </DropdownMenuItem>
+                              }
+                            />
+                            <DropdownMenuSeparator />
+                            <DeleteProductDialog
+                              productId={product.id}
+                              productName={product.name}
+                              sku={product.sku}
+                              trigger={
+                                <DropdownMenuItem
+                                  onSelect={(e) => e.preventDefault()}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 size-3.5" />
+                                  Delete Product
+                                </DropdownMenuItem>
+                              }
+                            />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

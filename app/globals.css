@@ -196,23 +196,25 @@
   .text-gradient {
     @apply bg-gradient-to-r from-cyan-300 via-sky-300 to-violet-300 bg-clip-text text-transparent;
   }
+}
 
-  .shadow-soft {
-    box-shadow: var(--shadow-soft);
-  }
+@utility shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
 
-  .shadow-hover {
-    box-shadow: var(--shadow-hover);
-  }
+@utility shadow-hover {
+  box-shadow: var(--shadow-hover);
+}
 
-  .shadow-button {
-    box-shadow: var(--shadow-button);
-  }
+@utility shadow-button {
+  box-shadow: var(--shadow-button);
+}
 
-  .shadow-glow {
-    box-shadow: var(--shadow-glow);
-  }
+@utility shadow-glow {
+  box-shadow: var(--shadow-glow);
+}
 
+@layer utilities {
   .glass {
     background: color-mix(in oklab, var(--card) 84%, transparent);
     backdrop-filter: blur(18px) saturate(155%);
@@ -231,11 +233,21 @@
   }
 
   .panel {
-    @apply glass-elevated rounded-[1.75rem] border border-border/70 shadow-soft;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+      color-mix(in oklab, var(--card) 90%, transparent);
+    backdrop-filter: blur(24px) saturate(165%);
+    -webkit-backdrop-filter: blur(24px) saturate(165%);
+    box-shadow: 0 22px 60px -40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    @apply rounded-[1.75rem] border border-border/70;
+    box-shadow: var(--shadow-soft);
   }
 
   .panel-soft {
-    @apply glass rounded-[1.4rem] border border-border/60;
+    background: color-mix(in oklab, var(--card) 84%, transparent);
+    backdrop-filter: blur(18px) saturate(155%);
+    -webkit-backdrop-filter: blur(18px) saturate(155%);
+    @apply rounded-[1.4rem] border border-border/60;
   }
 
   .chip {
