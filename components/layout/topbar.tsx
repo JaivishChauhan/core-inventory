@@ -1,0 +1,221 @@
+"use client"
+
+/**
+ * Top Application Bar — global context and quick actions.
+ * FRD §3: Reserved for global search (SKU/Product), notifications,
+ * and the active Warehouse selector.
+ * FRD §1: Keyboard-first — Cmd+K opens command palette search.
+ * FRD §8: Mobile-first responsive with touch targets ≥ 44px.
+ *
+ * @client Required for search input state, dropdowns, and keyboard shortcuts.
+ */
+
+import { useState, useCallback, useEffect } from "react"
+import {
+  Search,
+  Bell,
+  ChevronDown,
+  LogOut,
+  User,
+  Warehouse,
+  Command,
+} from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { SEARCH_DEBOUNCE_MS } from "@/lib/constants"
+
+/**
+ * Debounced search handler.
+ * Waits SEARCH_DEBOUNCE_MS before firing the callback to protect the API.
+ * FRD §1: All search/filter inputs must be debounced (300ms).
+ */
+function useDebounceSearch(delayMs: number) {
+  const [query, setQuery] = useState("")
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null)
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      setQuery(value)
+      if (timeoutId) clearTimeout(timeoutId)
+
+      const newTimeout = setTimeout(() => {
+        // TODO: Wire to global search API
+      }, delayMs)
+
+      setTimeoutId(newTimeout)
+    },
+    [delayMs, timeoutId]
+  )
+
+  return { query, handleSearchChange }
+}
+
+/**
+ * Keyboard shortcut hook for Cmd+K (macOS) / Ctrl+K (Windows).
+ * FRD §1: "Robust command palettes (Cmd+K) and keyboard shortcuts."
+ */
+function useCommandPaletteShortcut(onOpen: () => void) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault()
+        onOpen()
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onOpen])
+}
+
+export function Topbar() {
+  const { query, handleSearchChange } = useDebounceSearch(SEARCH_DEBOUNCE_MS)
+  const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+  // Wire Cmd+K to focus the search input
+  useCommandPaletteShortcut(() => {
+    const searchInput = document.querySelector<HTMLInputElement>(
+      "[data-search-input]"
+    )
+    searchInput?.focus()
+  })
+
+  return (
+    <header className="sticky top-0 z-30 flex min-h-14 flex-wrap items-center gap-2 border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm supports-backdrop-filter:bg-background/60 sm:flex-nowrap sm:gap-3 sm:px-4">
+      {/* Sidebar toggle — touch-friendly (FRD §8) */}
+      <div className="flex items-center gap-2">
+        <SidebarTrigger className="touch-target -ml-1" />
+        <Separator orientation="vertical" className="hidden h-4 sm:block" />
+      </div>
+
+      {/* Global Search — FRD §3 */}
+      <div className="order-3 w-full flex-1 sm:order-none sm:max-w-md">
+        <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Search SKU, products..."
+          className={`h-9 pr-16 pl-8 text-sm transition-shadow duration-200 ${
+            isSearchFocused
+              ? "border-primary ring-2 ring-primary ring-offset-1"
+              : ""
+          }`}
+          value={query}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
+          data-search-input
+        />
+        {/* Cmd+K hint */}
+        <div className="absolute top-1/2 right-2 hidden -translate-y-1/2 items-center gap-0.5 sm:flex">
+          <kbd className="pointer-events-none inline-flex h-5 items-center gap-0.5 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground select-none">
+            <Command className="size-2.5" />K
+          </kbd>
+        </div>
+      </div>
+
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
+        {/* Warehouse Selector */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="touch-target btn-lift hidden h-9 gap-1.5 text-xs sm:inline-flex"
+            >
+              <Warehouse className="size-3.5" />
+              <span className="hidden md:inline">Main Warehouse</span>
+              <ChevronDown className="size-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel>Switch Warehouse</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2">
+              <div className="rounded-lg bg-indigo-50 p-1 dark:bg-indigo-950/50">
+                <Warehouse className="size-3.5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Main Warehouse</p>
+                <p className="text-xs text-muted-foreground">Active</p>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-xs text-muted-foreground">
+              More warehouses via Settings
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Notifications — FRD §3 */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="touch-target relative size-9"
+        >
+          <Bell className="size-4" />
+          <Badge
+            variant="destructive"
+            className="shadow-glow absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full p-0 text-[10px]"
+          >
+            3
+          </Badge>
+          <span className="sr-only">Notifications</span>
+        </Button>
+
+        <Separator orientation="vertical" className="hidden h-4 sm:block" />
+
+        {/* Profile Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="touch-target h-9 gap-2 px-1.5 sm:px-2"
+            >
+              <Avatar className="size-7">
+                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-500 text-[10px] font-semibold text-white">
+                  WM
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden text-xs font-medium md:inline">
+                Manager
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-semibold">Warehouse Manager</p>
+                <p className="text-xs text-muted-foreground">
+                  manager@core.inv
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2">
+              <User className="size-4" />
+              My Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+              <LogOut className="size-4" />
+              Log Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </header>
+  )
+}

@@ -1,0 +1,285 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Core Inventory IMS — "Corporate Trust" Design System
+ * Source: FRD Design System v1
+ *
+ * Philosophy: Modern enterprise SaaS — trustworthy yet vibrant.
+ * Visual DNA:
+ *   1. Colored shadows (indigo/violet tints, NOT neutral grays)
+ *   2. Isometric / 3D transforms on cards
+ *   3. Gradient text headlines (indigo → violet)
+ *   4. Soft blur orbs for atmospheric depth
+ *   5. Elevated cards with lift-on-hover
+ *   6. Indigo (primary) + Violet (accent) dual-tone palette
+ *
+ * Typography: Plus Jakarta Sans — geometric, friendly, enterprise-grade
+ * Accent Map:
+ *   Red    = destructive / out-of-stock alerts
+ *   Green  = success / validation
+ *   Amber  = pending / warning status
+ *   Indigo = primary brand / interactive
+ *   Violet = secondary / gradient terminus
+ */
+
+/* ============================
+   LIGHT MODE (default)
+   ============================ */
+:root {
+  /* Core Surfaces */
+  --background: oklch(0.984 0.003 247.858);   /* Slate-50 #F8FAFC */
+  --foreground: oklch(0.129 0.042 264.695);   /* Slate-900 #0F172A */
+  --card: oklch(1 0 0);                        /* White */
+  --card-foreground: oklch(0.129 0.042 264.695);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.129 0.042 264.695);
+
+  /* Brand — Indigo */
+  --primary: oklch(0.457 0.24 277.023);       /* Indigo-600 #4F46E5 */
+  --primary-foreground: oklch(1 0 0);
+
+  /* Secondary — Violet */
+  --secondary: oklch(0.459 0.256 293.541);    /* Violet-600 #7C3AED */
+  --secondary-foreground: oklch(1 0 0);
+
+  /* Muted / Supporting */
+  --muted: oklch(0.968 0.007 264.536);        /* Slate-100 */
+  --muted-foreground: oklch(0.554 0.046 257.417); /* Slate-500 #64748B */
+  --accent: oklch(0.968 0.007 264.536);
+  --accent-foreground: oklch(0.129 0.042 264.695);
+
+  /* Status Colors */
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --success: oklch(0.648 0.2 163.0);          /* Emerald-500 #10B981 */
+  --warning: oklch(0.769 0.188 70.08);        /* Amber-400 */
+
+  /* Structure */
+  --border: oklch(0.929 0.013 255.508);       /* Slate-200 #E2E8F0 */
+  --input: oklch(0.929 0.013 255.508);
+  --ring: oklch(0.457 0.24 277.023);          /* Indigo-600 */
+
+  /* Radius — rounded-xl for cards, rounded-lg for inputs */
+  --radius: 0.75rem;
+
+  /* Charts */
+  --chart-1: oklch(0.457 0.24 277.023);
+  --chart-2: oklch(0.459 0.256 293.541);
+  --chart-3: oklch(0.648 0.2 163.0);
+  --chart-4: oklch(0.769 0.188 70.08);
+  --chart-5: oklch(0.577 0.245 27.325);
+
+  /* Sidebar */
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.129 0.042 264.695);
+  --sidebar-primary: oklch(0.457 0.24 277.023);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.962 0.023 277.334); /* Indigo-50 */
+  --sidebar-accent-foreground: oklch(0.457 0.24 277.023);
+  --sidebar-border: oklch(0.929 0.013 255.508);
+  --sidebar-ring: oklch(0.457 0.24 277.023);
+
+  /* FRD Colored Shadows (indigo-tinted) */
+  --shadow-color: 79, 70, 229;
+  --shadow-soft: 0 4px 20px -2px rgba(var(--shadow-color), 0.1);
+  --shadow-hover: 0 10px 25px -5px rgba(var(--shadow-color), 0.15), 0 8px 10px -6px rgba(var(--shadow-color), 0.1);
+  --shadow-button: 0 4px 14px 0 rgba(var(--shadow-color), 0.3);
+  --shadow-glow: 0 0 20px rgba(var(--shadow-color), 0.5);
+}
+
+/* ============================
+   DARK MODE
+   ============================ */
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.178 0.01 268.0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.178 0.01 268.0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.585 0.233 277.117);       /* Indigo-400 */
+  --primary-foreground: oklch(0.129 0.042 264.695);
+  --secondary: oklch(0.601 0.25 292.717);       /* Violet-400 */
+  --secondary-foreground: oklch(0.129 0.042 264.695);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.141 0.005 285.823);
+  --success: oklch(0.696 0.17 162.48);
+  --warning: oklch(0.828 0.189 84.429);
+  --border: oklch(0.274 0.006 286.033);
+  --input: oklch(0.274 0.006 286.033);
+  --ring: oklch(0.585 0.233 277.117);
+  --chart-1: oklch(0.585 0.233 277.117);
+  --chart-2: oklch(0.601 0.25 292.717);
+  --chart-3: oklch(0.696 0.17 162.48);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.704 0.191 22.216);
+  --sidebar: oklch(0.161 0.006 285.885);
+  --sidebar-foreground: oklch(0.967 0.001 286.375);
+  --sidebar-primary: oklch(0.585 0.233 277.117);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.208 0.035 280.0);
+  --sidebar-accent-foreground: oklch(0.967 0.001 286.375);
+  --sidebar-border: oklch(0.274 0.006 286.033);
+  --sidebar-ring: oklch(0.585 0.233 277.117);
+  --shadow-color: 99, 102, 241;
+}
+
+/* ============================
+   TAILWIND THEME MAPPING
+   ============================ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* ============================
+   BASE LAYER
+   ============================ */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Reduced motion for accessibility (FRD §6) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Custom scrollbar — industrial, minimal */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(var(--shadow-color), 0.15);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(var(--shadow-color), 0.3);
+  }
+}
+
+/* ============================
+   UTILITY CLASSES — FRD DESIGN DNA
+   ============================ */
+@layer utilities {
+  /* FRD: Gradient text (indigo → violet) for headlines */
+  .text-gradient {
+    @apply bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] bg-clip-text text-transparent;
+  }
+
+  /* FRD: Card colored shadows */
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-hover {
+    box-shadow: var(--shadow-hover);
+  }
+
+  .shadow-button {
+    box-shadow: var(--shadow-button);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  /* FRD: Card hover lift */
+  .card-hover {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .card-hover:hover {
+    @apply -translate-y-1;
+    box-shadow: var(--shadow-hover);
+  }
+
+  /* FRD: Button hover lift */
+  .btn-lift {
+    @apply transition-all duration-200 ease-out;
+  }
+
+  .btn-lift:hover {
+    @apply -translate-y-0.5;
+    box-shadow: var(--shadow-button);
+  }
+
+  /* FRD: Gradient button */
+  .btn-gradient {
+    @apply bg-gradient-to-r from-[#4F46E5] to-[#7C3AED] text-white;
+  }
+
+  /* FRD: Atmospheric blur orb */
+  .blur-orb {
+    @apply absolute rounded-full blur-3xl opacity-20 pointer-events-none;
+  }
+
+  /* High data density — compact rows */
+  .data-dense {
+    @apply text-sm leading-tight;
+  }
+
+  /* Touch target minimum (FRD §8: 44x44px) */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}
