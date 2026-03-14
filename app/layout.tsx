@@ -1,10 +1,11 @@
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google"
 import type { Metadata } from "next"
-import { Toaster } from "sonner"
 
 import "./globals.css"
+
 import { ThemeProvider } from "@/components/theme-provider"
 import { QueryProvider } from "@/components/providers/query-provider"
+import { Toaster } from "@/components/ui/sonner"
 
 /**
  * Plus Jakarta Sans — FRD §2 Typography.

@@ -101,7 +101,7 @@ export function Topbar() {
       </div>
 
       {/* Global Search — FRD §3 */}
-      <div className="order-3 w-full flex-1 sm:order-none sm:max-w-md">
+      <div className="relative order-3 w-full flex-1 sm:order-none sm:max-w-md">
         <Search className="absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"

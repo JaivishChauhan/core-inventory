@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -68,14 +69,15 @@ function KpiCard({
         <div className="text-3xl font-extrabold tracking-tight">{value}</div>
         <div className="mt-1.5 flex items-center gap-2">
           {trend && (
-            <span
-              className={`inline-flex items-center gap-0.5 text-xs font-semibold ${
+            <Badge
+              variant={
                 trend.direction === "up"
-                  ? "text-emerald-600 dark:text-emerald-400"
+                  ? "success"
                   : trend.direction === "down"
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-muted-foreground"
-              }`}
+                    ? "destructive"
+                    : "secondary"
+              }
+              className="bg-opacity-10 dark:bg-opacity-20 gap-1"
             >
               {trend.direction === "up" ? (
                 <TrendingUp className="size-3" />
@@ -83,7 +85,7 @@ function KpiCard({
                 <TrendingDown className="size-3" />
               ) : null}
               {trend.value}
-            </span>
+            </Badge>
           )}
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
@@ -182,27 +184,21 @@ export default function DashboardPage() {
         <h2 className="mb-3 text-lg font-bold">Recent Activity</h2>
         <Card className="shadow-soft border-border/50">
           <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-center py-8 text-muted-foreground sm:py-12">
-              <div className="space-y-3 text-center">
-                <div className="mx-auto w-fit rounded-xl bg-indigo-50 p-4 dark:bg-indigo-950/50">
-                  <Activity className="size-6 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">
-                    Activity feed will stream from the stock ledger
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Real-time updates via Supabase subscriptions
-                  </p>
-                </div>
+            <Alert className="border-indigo-100 bg-indigo-50/50 dark:border-indigo-900/50 dark:bg-indigo-950/20">
+              <Activity className="size-4 text-indigo-600 dark:text-indigo-400" />
+              <AlertTitle className="text-indigo-900 dark:text-indigo-200">
+                Activity feed will stream from the stock ledger
+              </AlertTitle>
+              <AlertDescription className="mt-2 flex flex-col gap-3 text-indigo-700/80 sm:flex-row sm:items-center dark:text-indigo-300/80">
+                <span>Real-time updates via Supabase subscriptions</span>
                 <Badge
                   variant="outline"
-                  className="border-indigo-200 text-xs text-indigo-600 dark:border-indigo-800 dark:text-indigo-400"
+                  className="w-fit border-indigo-200 bg-indigo-100/50 text-indigo-600 dark:border-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-400"
                 >
-                  Coming with Supabase Realtime
+                  Coming Soon
                 </Badge>
-              </div>
-            </div>
+              </AlertDescription>
+            </Alert>
           </CardContent>
         </Card>
       </div>

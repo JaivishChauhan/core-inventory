@@ -1,6 +1,14 @@
-import { History } from "lucide-react"
+import { History, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -25,21 +33,87 @@ export default function MoveHistoryPage() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="flex items-center justify-center px-4 py-12 sm:px-6 sm:py-16">
-            <div className="max-w-md space-y-3 text-center">
-              <History className="mx-auto size-10 text-muted-foreground/50" />
-              <div>
-                <p className="text-sm font-medium">Master Audit Log</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Date, Reference, Product, Source, Destination, Quantity, and
-                  Status for every confirmed entry.
-                </p>
-              </div>
-              <Badge variant="outline" className="text-xs">
-                Phase 4 — Data Table Integration
-              </Badge>
-            </div>
-          </div>
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="w-[120px]">Date</TableHead>
+                <TableHead className="w-[100px]">Ref</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Movement</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">User</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {/* Mock Row 1 */}
+              <TableRow>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  Today, 09:41
+                </TableCell>
+                <TableCell className="font-mono text-xs font-medium">
+                  REC-1042
+                </TableCell>
+                <TableCell className="font-medium">
+                  Industrial Widget Alpha
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Supplier</span>
+                    <ArrowRight className="size-3" />
+                    <span>Main Warehouse</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-mono text-emerald-600 dark:text-emerald-400">
+                  +500
+                </TableCell>
+                <TableCell className="text-right text-xs">J. Doe</TableCell>
+              </TableRow>
+
+              {/* Mock Row 2 */}
+              <TableRow>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  Today, 08:15
+                </TableCell>
+                <TableCell className="font-mono text-xs font-medium">
+                  DEL-2099
+                </TableCell>
+                <TableCell className="font-medium">Thermal Sensor V2</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Main Warehouse</span>
+                    <ArrowRight className="size-3" />
+                    <span>Customer X</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-mono text-red-600 dark:text-red-400">
+                  -120
+                </TableCell>
+                <TableCell className="text-right text-xs">A. Smith</TableCell>
+              </TableRow>
+
+              {/* Mock Row 3 */}
+              <TableRow>
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  Yesterday
+                </TableCell>
+                <TableCell className="font-mono text-xs font-medium">
+                  TRF-0041
+                </TableCell>
+                <TableCell className="font-medium">
+                  Titanium Bearings 8mm
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>Main Warehouse</span>
+                    <ArrowRight className="size-3" />
+                    <span>Zone B</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right font-mono">0</TableCell>
+                <TableCell className="text-right text-xs">System</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

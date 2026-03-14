@@ -105,7 +105,7 @@ export function AppSidebar() {
                 <div className="flex aspect-square size-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-sm">
                   <Boxes className="size-4" />
                 </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-bold">Core Inventory</span>
                   <span className="truncate text-xs text-muted-foreground">
                     Warehouse IMS
@@ -120,7 +120,7 @@ export function AppSidebar() {
       <SidebarContent>
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase">
+          <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase group-data-[collapsible=icon]:hidden">
             Navigation
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -135,7 +135,9 @@ export function AppSidebar() {
                   >
                     <Link href={item.href} onClick={handleNavigate}>
                       <item.icon className="size-4" />
-                      <span>{item.title}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {item.title}
+                      </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -146,7 +148,7 @@ export function AppSidebar() {
 
         {/* Operations — Collapsible Sub-Menu */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase">
+          <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase group-data-[collapsible=icon]:hidden">
             Operations
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -162,8 +164,10 @@ export function AppSidebar() {
                       className="touch-target"
                     >
                       <PackagePlus className="size-4" />
-                      <span>Operations</span>
-                      <ChevronDown className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-180" />
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        Operations
+                      </span>
+                      <ChevronDown className="ml-auto size-4 transition-transform duration-200 group-data-[collapsible=icon]:hidden group-data-[state=open]/collapsible:rotate-180" />
                     </SidebarMenuButton>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
@@ -191,7 +195,7 @@ export function AppSidebar() {
 
         {/* System */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase">
+          <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/70 uppercase group-data-[collapsible=icon]:hidden">
             System
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -206,7 +210,9 @@ export function AppSidebar() {
                   >
                     <Link href={item.href} onClick={handleNavigate}>
                       <item.icon className="size-4" />
-                      <span>{item.title}</span>
+                      <span className="group-data-[collapsible=icon]:hidden">
+                        {item.title}
+                      </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -230,7 +236,7 @@ export function AppSidebar() {
                   WM
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-semibold">
                   Warehouse Manager
                 </span>

@@ -8,7 +8,7 @@ import { updateSession } from "@/lib/supabase/middleware"
  * @security This is the auth boundary. Redirect logic for
  * protected routes will be added in Phase 5 (Auth).
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   return await updateSession(request)
 }
 
