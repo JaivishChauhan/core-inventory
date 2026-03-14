@@ -1,36 +1,41 @@
-import { JetBrains_Mono, Sora, Space_Grotesk } from "next/font/google"
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google"
 import type { Metadata } from "next"
 
 import "./globals.css"
 
-import { QueryProvider } from "@/components/providers/query-provider"
 import { ThemeProvider } from "@/components/theme-provider"
+import { QueryProvider } from "@/components/providers/query-provider"
 import { Toaster } from "@/components/ui/sonner"
 
-const fontDisplay = Sora({
+/**
+ * Plus Jakarta Sans — FRD §2 Typography.
+ * Geometric sans-serif with friendly rounded terminals.
+ * Balances professional authority with modern approachability.
+ */
+const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-app-display",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 })
 
-const fontBody = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-app-body",
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-})
-
+/**
+ * JetBrains Mono for monospace (SKUs, IDs, quantities).
+ */
 const fontMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-app-mono",
+  variable: "--font-mono",
   weight: ["400", "500"],
   display: "swap",
 })
 
+/**
+ * SEO metadata — proper title template for page-level titles.
+ * @see FRD §9 for accessibility and semantic HTML requirements.
+ */
 export const metadata: Metadata = {
   title: {
-    default: "Core Inventory - Warehouse IMS",
+    default: "Core Inventory — Warehouse IMS",
     template: "%s | Core Inventory",
   },
   description:
@@ -52,9 +57,9 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${fontDisplay.variable} ${fontBody.variable} ${fontMono.variable} antialiased`}
+      className={`${fontSans.variable} ${fontMono.variable} antialiased`}
     >
-      <body className="min-h-svh overflow-x-hidden bg-background text-foreground">
+      <body className="min-h-svh overflow-x-hidden bg-background font-sans text-foreground">
         <ThemeProvider>
           <QueryProvider>
             {children}
