@@ -9,22 +9,26 @@ async function runMigration() {
   console.log("Running migration...")
 
   await db.execute(sql`
-    DO $$ BEGIN
+    DO $ BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
         CREATE TYPE user_role AS ENUM ('admin', 'staff');
       END IF;
-    END $$;
+    END $;
   `)
 
-  // Add name column to users if missing, drop old auth columns
+  // Add name column to users if missing
   await db.execute(sql`
     ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '',
-      DROP COLUMN IF EXISTS username,
-      DROP COLUMN IF EXISTS password_hash;
+      ADD COLUMN IF NOT EXISTS name TEXT NOT NULL DEFAULT '';
   `)
 
-  // Create otp_tokens table
+  // Add password_hash column for password-based auth
+  await db.execute(sql`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS password_hash TEXT;
+  `)
+
+  // Create otp_tokens table (used for password reset only)
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS otp_tokens (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -36,13 +40,19 @@ async function runMigration() {
     );
   `)
 
-  // Drop old otp_codes table
+  // Drop old otp_codes table if exists
   await db.execute(sql`DROP TABLE IF EXISTS otp_codes;`)
 
-  // Rename reference_document -> reference in stock_moves
+  // Rename reference_document -> reference in stock_moves if needed
   await db.execute(sql`
-    ALTER TABLE stock_moves
-      RENAME COLUMN reference_document TO reference;
+    DO $ BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'stock_moves' AND column_name = 'reference_document'
+      ) THEN
+        ALTER TABLE stock_moves RENAME COLUMN reference_document TO reference;
+      END IF;
+    END $;
   `)
 
   // Add user_role type handling

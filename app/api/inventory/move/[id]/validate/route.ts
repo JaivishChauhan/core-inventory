@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db/connection"
-import { stockMoves } from "@/lib/db/schema"
 import { getServerSession } from "@/lib/auth/session"
-import { eq } from "drizzle-orm"
+import {
+  InventoryMutationError,
+  validateInventoryMove,
+} from "@/lib/db/inventory-mutations"
 
 /**
  * POST /api/inventory/move/[id]/validate
@@ -21,35 +22,16 @@ export async function POST(
   const session = await getServerSession()
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
-  const { id } = await params
+  try {
+    const { id } = await params
+    const move = await validateInventoryMove(id)
+    return NextResponse.json({ move })
+  } catch (err) {
+    if (err instanceof InventoryMutationError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode })
+    }
 
-  const [move] = await db
-    .select()
-    .from(stockMoves)
-    .where(eq(stockMoves.id, id))
-    .limit(1)
-
-  if (!move) {
-    return NextResponse.json({ error: "Stock move not found." }, { status: 404 })
+    console.error("[POST /api/inventory/move/[id]/validate]", err)
+    return NextResponse.json({ error: "Failed to validate stock move." }, { status: 500 })
   }
-  if (move.status === "done") {
-    return NextResponse.json(
-      { error: "This move has already been validated." },
-      { status: 409 }
-    )
-  }
-  if (move.status === "canceled") {
-    return NextResponse.json(
-      { error: "Cannot validate a canceled move." },
-      { status: 409 }
-    )
-  }
-
-  const [validated] = await db
-    .update(stockMoves)
-    .set({ status: "done", validated_at: new Date() })
-    .where(eq(stockMoves.id, id))
-    .returning()
-
-  return NextResponse.json({ move: validated })
 }

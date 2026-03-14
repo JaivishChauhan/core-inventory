@@ -1,6 +1,18 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { History } from "lucide-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -9,61 +21,156 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { History, AlertCircle } from "lucide-react"
 import { MOVE_STATUS_CONFIG, MOVE_TYPE_LABELS } from "@/lib/constants"
 
-type StockMove = {
+type MoveTypeFilter = "adjustment" | "all" | "delivery" | "internal_transfer" | "receipt"
+type StatusFilter = "all" | "canceled" | "done" | "draft" | "ready" | "waiting"
+
+type ReferenceDataResponse = {
+  categories: string[]
+  warehouses: Array<{
+    id: string
+    name: string
+    code: string
+    address: string | null
+  }>
+}
+
+type MoveRecord = {
   id: string
-  product_id: string
-  move_type: keyof typeof MOVE_TYPE_LABELS
-  status: keyof typeof MOVE_STATUS_CONFIG
+  productName: string
+  sku: string
   quantity: number
+  moveType: keyof typeof MOVE_TYPE_LABELS
+  status: keyof typeof MOVE_STATUS_CONFIG
   reference: string | null
-  created_at: string
-  validated_at: string | null
+  createdAt: string
+  sourceLocationName: string
+  sourceWarehouseName: string | null
+  destLocationName: string
+  destWarehouseName: string | null
 }
 
-const STATUS_BADGE_CLASSES: Record<keyof typeof MOVE_STATUS_CONFIG, string> = {
-  draft: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  waiting: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400",
-  ready: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400",
-  done: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400",
-  canceled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400",
-}
-
-const TYPE_BADGE_CLASSES: Record<keyof typeof MOVE_TYPE_LABELS, string> = {
-  receipt: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300",
-  delivery: "bg-violet-50 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300",
-  internal_transfer: "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  adjustment: "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300",
+type MoveResponse = {
+  moves: MoveRecord[]
 }
 
 export default function MoveHistoryPage() {
-  const { data, isLoading, isError } = useQuery<{ moves: StockMove[] }>({
-    queryKey: ["move-history"],
-    queryFn: () => fetch("/api/inventory/move").then((r) => r.json()),
+  const [moveType, setMoveType] = useState<MoveTypeFilter>("all")
+  const [status, setStatus] = useState<StatusFilter>("all")
+  const [warehouseId, setWarehouseId] = useState("all")
+  const [category, setCategory] = useState("all")
+
+  const { data: referenceData } = useQuery<ReferenceDataResponse>({
+    queryKey: ["inventory-reference-data", "move-history"],
+    queryFn: () =>
+      fetch("/api/inventory/reference-data").then(
+        (response) => response.json() as Promise<ReferenceDataResponse>
+      ),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const { data, isLoading, isError } = useQuery<MoveResponse>({
+    queryKey: ["move-history", moveType, status, warehouseId, category],
+    queryFn: () => {
+      const searchParams = new URLSearchParams()
+      if (moveType !== "all") searchParams.set("moveType", moveType)
+      if (status !== "all") searchParams.set("status", status)
+      if (warehouseId !== "all") searchParams.set("warehouseId", warehouseId)
+      if (category !== "all") searchParams.set("category", category)
+      return fetch(`/api/inventory/move?${searchParams.toString()}`).then(
+        (response) => response.json() as Promise<MoveResponse>
+      )
+    },
     staleTime: 15_000,
     refetchInterval: 30_000,
   })
 
   const moves = data?.moves ?? []
+  const filterSummary = useMemo(
+    () => [moveType, status, warehouseId, category].filter((value) => value !== "all").length,
+    [category, moveType, status, warehouseId]
+  )
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
-          <span className="text-gradient">Move History</span>
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Full immutable ledger of all stock movements. Sorted newest first.
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+            <span className="text-gradient">Move History</span>
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Immutable audit log of all receipts, deliveries, transfers, and adjustments.
+          </p>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          {filterSummary > 0
+            ? `${filterSummary} filters active`
+            : "Showing all ledger entries"}
         </p>
       </div>
 
-      <Card className="border-border/50 shadow-soft">
-        <CardHeader className="border-b border-border/50 pb-4">
+      <Card className="border-border/60 shadow-soft">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-center">
+          <Select value={moveType} onValueChange={(value) => setMoveType(value as MoveTypeFilter)}>
+            <SelectTrigger className="w-full sm:w-[190px]">
+              <SelectValue placeholder="Document type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Documents</SelectItem>
+              <SelectItem value="receipt">Receipts</SelectItem>
+              <SelectItem value="delivery">Deliveries</SelectItem>
+              <SelectItem value="internal_transfer">Internal Transfers</SelectItem>
+              <SelectItem value="adjustment">Adjustments</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={status} onValueChange={(value) => setStatus(value as StatusFilter)}>
+            <SelectTrigger className="w-full sm:w-[170px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="waiting">Waiting</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="done">Done</SelectItem>
+              <SelectItem value="canceled">Canceled</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={warehouseId} onValueChange={setWarehouseId}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Warehouse" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Warehouses</SelectItem>
+              {referenceData?.warehouses.map((warehouse) => (
+                <SelectItem key={warehouse.id} value={warehouse.id}>
+                  {warehouse.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {referenceData?.categories.map((item) => (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60 shadow-soft">
+        <CardHeader className="border-b border-border/60">
           <div className="flex items-center gap-2">
             <History className="size-5 text-indigo-600 dark:text-indigo-400" />
             <CardTitle className="text-base">All Movements</CardTitle>
@@ -76,65 +183,79 @@ export default function MoveHistoryPage() {
                 <TableHead className="pl-6">Reference</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead>Route</TableHead>
                 <TableHead className="text-right">Quantity</TableHead>
                 <TableHead className="pr-6 text-right">Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <TableRow key={i} className="border-border/50">
-                    {Array.from({ length: 5 }).map((_, j) => (
-                      <TableCell key={j} className={j === 0 ? "pl-6" : ""}>
-                        <Skeleton className="h-4 w-24" />
-                      </TableCell>
-                    ))}
+                Array.from({ length: 6 }).map((_, index) => (
+                  <TableRow key={index}>
+                    <TableCell colSpan={7} className="h-16 animate-pulse bg-muted/10" />
                   </TableRow>
                 ))
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-16 text-center text-destructive">
-                    <div className="flex flex-col items-center gap-2">
-                      <AlertCircle className="size-8" />
-                      <span>Failed to load history. Please refresh.</span>
-                    </div>
+                  <TableCell colSpan={7} className="py-16 text-center text-destructive">
+                    Failed to load history. Please refresh.
                   </TableCell>
                 </TableRow>
               ) : moves.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={7}>
                     <div className="flex flex-col items-center gap-3 py-16 text-center">
                       <History className="size-10 text-muted-foreground/40" />
-                      <p className="font-medium text-muted-foreground">No movements recorded yet</p>
+                      <p className="font-medium text-muted-foreground">
+                        No ledger entries match the current filters
+                      </p>
                       <p className="text-sm text-muted-foreground/60">
-                        Stock moves will appear here once operations begin.
+                        Adjust the filters or create a new operation to populate the audit trail.
                       </p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 moves.map((move) => (
-                  <TableRow key={move.id} className="border-border/50 transition-colors hover:bg-muted/20">
-                    <TableCell className="pl-6">
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {move.reference ?? move.id.slice(0, 8).toUpperCase()}
-                      </span>
+                  <TableRow key={move.id} className="border-border/50">
+                    <TableCell className="pl-6 font-mono text-xs">
+                      {move.reference ?? move.id.slice(0, 8).toUpperCase()}
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${TYPE_BADGE_CLASSES[move.move_type] ?? ""}`}>
-                        {MOVE_TYPE_LABELS[move.move_type] ?? move.move_type}
-                      </span>
+                      <Badge variant="secondary">{MOVE_TYPE_LABELS[move.moveType]}</Badge>
                     </TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASSES[move.status] ?? ""}`}>
-                        {MOVE_STATUS_CONFIG[move.status]?.label ?? move.status}
-                      </span>
+                      <Badge
+                        variant={
+                          move.status === "done"
+                            ? "success"
+                            : move.status === "canceled"
+                              ? "destructive"
+                              : move.status === "waiting"
+                                ? "warning"
+                                : "outline"
+                        }
+                      >
+                        {MOVE_STATUS_CONFIG[move.status].label}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <span className="font-mono font-semibold">{move.quantity}</span>
+                    <TableCell>
+                      <p className="font-semibold">{move.productName}</p>
+                      <p className="font-mono text-xs text-muted-foreground">{move.sku}</p>
                     </TableCell>
-                    <TableCell className="pr-6 text-right text-xs text-muted-foreground">
-                      {new Date(move.created_at).toLocaleString("en-IN", {
+                    <TableCell className="text-sm text-muted-foreground">
+                      {move.sourceLocationName}
+                      {move.sourceWarehouseName ? ` (${move.sourceWarehouseName})` : ""}
+                      {" -> "}
+                      {move.destLocationName}
+                      {move.destWarehouseName ? ` (${move.destWarehouseName})` : ""}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-semibold">
+                      {move.quantity}
+                    </TableCell>
+                    <TableCell className="pr-6 text-right text-sm text-muted-foreground">
+                      {new Date(move.createdAt).toLocaleString("en-IN", {
                         day: "numeric",
                         month: "short",
                         year: "numeric",

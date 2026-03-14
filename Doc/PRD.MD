@@ -1,124 +1,182 @@
 # 📋 Product Requirements Document: Core Inventory IMS
 
-## 1. Product Overview & Vision
+## 1. Problem Statement
 
-**Problem Statement:** Warehouses are currently operating in the dark ages, relying on manual registers, scattered Excel sheets, and disconnected tracking methods. This leads to stock mismatches, lost items, and zero operational visibility.
-**The Solution:** A centralized, real-time, and mobile-friendly Inventory Management System (IMS). The primary directive is absolute data integrity: **every single stock movement must be logged in an immutable ledger**.
+Build a modular Inventory Management System (IMS) that digitizes and streamlines all stock-related operations within a business.
+
+The goal is to replace manual registers, Excel sheets, and scattered tracking methods with a centralized, real-time, and easy-to-use application.
+
+---
 
 ## 2. Target Users
 
-The system is designed for two distinct user profiles:
+- **Inventory Managers**
+  - Manage incoming and outgoing stock
+  - Monitor operations via dashboard KPIs and filters
 
-* **Inventory Managers:** The overseers. They need a high-level view of operations, KPI tracking, and the ability to manage incoming (vendor) and outgoing (customer) flows.
-
-
-* **Warehouse Staff:** The boots on the ground. They are executing the physical work: performing internal transfers, picking items for delivery, shelving received goods, and conducting cycle counts/adjustments.
-
-
-
-## 3. Core Architecture & Philosophy (Technical Stance)
-
-We are explicitly rejecting the standard "update the stock column" approach.
-
-* 
-**Event-Sourced Ledger:** The total stock of any item is a dynamically calculated sum of its entire move history.
-
-
-* **Real-time Sync:** Dashboard KPIs and stock levels must update instantaneously across clients when a warehouse worker validates a movement on the floor.
-
-## 4. Feature Specifications
-
-### 4.1. Authentication & Onboarding
-
-* 
-**Requirement:** Users must be able to sign up, log in, and securely access the system.
-
-
-* 
-**Authentication Direction:** The system must support standard username/email and password authentication with OTP-based password reset. Authentication and OTP generation/verification should be handled within the application stack without depending on third-party BaaS or hosted auth products.
-
-
-* 
-**Flow:** Upon successful authentication, the user is immediately routed to the main Inventory Dashboard.
-
-
-
-### 4.2. The Command Center (Dashboard)
-
-The landing page serves as a real-time snapshot of the warehouse's heartbeat.
-
-* **Live KPIs:**
-* Total count of Products in Stock.
-
-
-* Alerts for Low Stock or Out of Stock items.
-
-
-* Queue sizes for Pending Receipts and Pending Deliveries.
-
-
-* Number of Scheduled Internal Transfers.
-
-
-
-
-* 
-**Global Smart Filters:** Ability to slice dashboard data by document type (Receipts, Delivery, Internal, Adjustments), status (Draft, Waiting, Ready, Done, Canceled), specific warehouse/location, or product category .
-
-
-
-### 4.3. Product Management (Catalog)
-
-The master database of all physical goods.
-
-* 
-**Data Model:** Ability to create and update products with a Name, unique SKU/Code, Category, and Unit of Measure (UoM) .
-
-
-* 
-**Initial State:** Support for setting an initial stock level during creation (which under the hood, generates an initial "Adjustment" ledger entry).
-
-
-* 
-**Visibility:** Instant view of stock availability broken down per specific physical location.
-
-
-* 
-**Automation:** Configurable reordering rules to trigger low-stock alerts.
-
-
-
-### 4.4. Operations (The Stock Ledger Workflows)
-
-This is the engine of the app. All operations affect the ledger.
-
-* 
-**Receipts (Incoming Goods):** Processing items arriving from vendors. Users create a receipt, add the supplier, list products, input received quantities, and hit Validate, which automatically increments the stock ledger .
-
-
-* 
-**Delivery Orders (Outgoing Goods):** Processing items leaving for customers. Follows a Pick -> Pack -> Validate workflow, which automatically decrements the stock ledger upon validation .
-
-
-* 
-**Internal Transfers:** Moving stock *within* the company (e.g., Main Warehouse to Production Floor, or Rack A to Rack B) . The total company stock remains unchanged, but the item's location metadata is updated in the ledger.
-
-
-* 
-**Inventory Adjustments:** The audit tool to fix reality vs. system mismatches . Users select a product/location, enter the actual physical physical count, and the system auto-calculates the difference and logs the adjustment (e.g., logging a -3 for damaged items) .
-
-
-* 
-**Move History:** A master, immutable audit log of every transaction.
-
-
-
-### 4.5. Settings & Infrastructure
-
-* 
-**Multi-Warehouse Support:** The database must support multiple distinct warehouse entities.
-
-
-* **Location Hierarchy:** Ability to define granular locations (zones, aisles, racks) nested within a specific Warehouse.
+- **Warehouse Staff**
+  - Perform transfers, picking, shelving, and counting
+  - Execute operational workflows for receipts, deliveries, and adjustments
 
 ---
+
+## 3. Authentication & Access Flow
+
+- User signs up / logs in
+- OTP-based password reset is supported
+- After successful authentication, user is redirected to the **Inventory Dashboard**
+
+---
+
+## 4. Dashboard View (Landing Page)
+
+The dashboard acts as a real-time operational snapshot.
+
+### 4.1 Dashboard KPIs
+
+- Total Products in Stock
+- Low Stock / Out of Stock Items
+- Pending Receipts
+- Pending Deliveries
+- Internal Transfers Scheduled
+
+### 4.2 Dynamic Filters
+
+- By document type: `Receipts` / `Delivery` / `Internal` / `Adjustments`
+- By status: `Draft`, `Waiting`, `Ready`, `Done`, `Canceled`
+- By warehouse or location
+- By product category
+
+---
+
+## 5. Navigation & Information Architecture
+
+### 5.1 Main Navigation
+
+1. **Products**
+   - Create/update products
+   - Stock availability per location
+   - Product categories
+   - Reordering rules
+
+2. **Operations**
+   1. Receipts (Incoming Stock)
+   2. Delivery Orders (Outgoing Stock)
+   3. Inventory Adjustment
+   4. Move History
+
+3. **Dashboard**
+
+4. **Setting**
+   - Warehouse
+
+### 5.2 Profile Menu (Left Sidebar)
+
+- My Profile
+- Logout
+
+---
+
+## 6. Core Features
+
+### 6.1 Product Management
+
+Create products with:
+
+- Name
+- SKU / Code
+- Category
+- Unit of Measure
+- Initial stock (optional)
+
+### 6.2 Receipts (Incoming Goods)
+
+Used when items arrive from vendors.
+
+**Process:**
+
+1. Create a new receipt
+2. Add supplier and products
+3. Input quantities received
+4. Validate → stock increases automatically
+
+**Example:**
+
+- Receive 50 units of **Steel Rods** → stock `+50`
+
+### 6.3 Delivery Orders (Outgoing Goods)
+
+Used when stock leaves the warehouse for customer shipment.
+
+**Process:**
+
+1. Pick items
+2. Pack items
+3. Validate → stock decreases automatically
+
+**Example:**
+
+- Sales order for 10 chairs → chairs stock `-10`
+
+### 6.4 Internal Transfers
+
+Move stock within the company, such as:
+
+- Main Warehouse → Production Floor
+- Rack A → Rack B
+- Warehouse 1 → Warehouse 2
+
+Each movement is logged in the stock ledger.
+
+### 6.5 Stock Adjustments
+
+Used to fix mismatches between:
+
+1. Recorded stock
+2. Physical count
+
+**Steps:**
+
+- Select product/location
+- Enter counted quantity
+- System auto-updates stock and logs the adjustment
+
+---
+
+## 7. Additional Features
+
+- Low-stock alerts
+- Multi-warehouse support
+- SKU search and smart filters
+
+---
+
+## 8. Simplified Inventory Flow Example
+
+### Step 1: Receive goods from vendor
+
+- Receive **100 kg Steel**
+- Stock impact: `+100`
+
+### Step 2: Move to production rack
+
+- Internal transfer: Main Store → Production Rack
+- Total stock unchanged, location updated
+
+### Step 3: Deliver finished goods
+
+- Deliver **20 steel**
+- Stock impact: `-20`
+
+### Step 4: Adjust damaged items
+
+- Record **3 kg steel damaged**
+- Stock impact: `-3`
+
+✅ Everything is logged in the **Stock Ledger**.
+
+---
+
+## 9. Mockup Reference
+
+- Excalidraw mockup: https://link.excalidraw.com/l/65VNwvy7c4X/3ENvQFu9o8R

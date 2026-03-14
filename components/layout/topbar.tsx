@@ -11,6 +11,10 @@
  */
 
 import { useState, useCallback, useEffect } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useMutation, useQuery } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   Search,
   Bell,
@@ -81,8 +85,28 @@ function useCommandPaletteShortcut(onOpen: () => void) {
 }
 
 export function Topbar() {
+  const router = useRouter()
   const { query, handleSearchChange } = useDebounceSearch(SEARCH_DEBOUNCE_MS)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const { data: sessionData } = useQuery<{
+    user: { email: string; name: string; warehouseId: string | null }
+  }>({
+    queryKey: ["auth-me"],
+    queryFn: () => fetch("/api/auth/me").then((response) => response.json()),
+    staleTime: 5 * 60 * 1000,
+  })
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/auth/logout", { method: "POST" })
+      if (!response.ok) throw new Error("Failed to log out.")
+    },
+    onSuccess: () => {
+      toast.success("Logged out successfully.")
+      router.replace("/login")
+      router.refresh()
+    },
+    onError: (error: Error) => toast.error(error.message),
+  })
 
   // Wire Cmd+K to focus the search input
   useCommandPaletteShortcut(() => {
@@ -135,7 +159,9 @@ export function Topbar() {
               className="touch-target btn-lift hidden h-9 gap-1.5 text-xs sm:inline-flex"
             >
               <Warehouse className="size-3.5" />
-              <span className="hidden md:inline">Main Warehouse</span>
+              <span className="hidden md:inline">
+                {sessionData?.user.warehouseId ? "Active Warehouse" : "Select Warehouse"}
+              </span>
               <ChevronDown className="size-3" />
             </Button>
           </DropdownMenuTrigger>
@@ -147,8 +173,12 @@ export function Topbar() {
                 <Warehouse className="size-3.5 text-indigo-600 dark:text-indigo-400" />
               </div>
               <div>
-                <p className="text-sm font-medium">Main Warehouse</p>
-                <p className="text-xs text-muted-foreground">Active</p>
+                <p className="text-sm font-medium">
+                  {sessionData?.user.warehouseId ? "Warehouse selected" : "No warehouse pinned"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Manage warehouse context in Settings
+                </p>
               </div>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -186,32 +216,50 @@ export function Topbar() {
             >
               <Avatar className="size-7">
                 <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-500 text-[10px] font-semibold text-white">
-                  WM
+                  {(sessionData?.user.name ?? "Warehouse Manager")
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <span className="hidden text-xs font-medium md:inline">
-                Manager
+                {sessionData?.user.name ?? "Manager"}
               </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold">Warehouse Manager</p>
+                <p className="text-sm font-semibold">
+                  {sessionData?.user.name ?? "Warehouse Manager"}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  manager@core.inv
+                  {sessionData?.user.email ?? "manager@core.inv"}
                 </p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2">
-              <User className="size-4" />
-              My Profile
+            <DropdownMenuItem asChild className="gap-2">
+              <Link href="/profile">
+                <User className="size-4" />
+                My Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="gap-2">
+              <Link href="/settings">
+                <Warehouse className="size-4" />
+                Warehouses
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              className="gap-2 text-destructive focus:text-destructive"
+              onClick={() => logoutMutation.mutate()}
+            >
               <LogOut className="size-4" />
-              Log Out
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

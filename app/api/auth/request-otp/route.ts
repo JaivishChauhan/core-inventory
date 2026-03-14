@@ -8,13 +8,12 @@ import { eq } from "drizzle-orm"
 
 const RequestOtpSchema = z.object({
   email: z.string().email("Invalid email format"),
-  name: z.string().min(2, "Name must be at least 2 characters").optional(),
 })
 
 /**
  * POST /api/auth/request-otp
- * Creates or identifies user by email, generates a 6-digit OTP,
- * stores the hash, and sends the code via SMTP.
+ * Generates a 6-digit OTP for password reset.
+ * User must already exist in the system.
  *
  * @validation email must be valid RFC-5322 format.
  * @security Raw OTP is never stored — only SHA-256 hash.
@@ -31,7 +30,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const { email, name } = parsed.data
+  const { email } = parsed.data
 
   try {
     // Check if user exists
@@ -42,14 +41,10 @@ export async function POST(req: NextRequest) {
       .limit(1)
 
     if (!existingUser) {
-      if (!name) {
-        // Signal client to collect name for first-time registration
-        return NextResponse.json(
-          { error: "Name is required for first-time registration", requiresName: true },
-          { status: 400 }
-        )
-      }
-      await db.insert(users).values({ email, name })
+      return NextResponse.json(
+        { error: "No account found with this email address." },
+        { status: 404 }
+      )
     }
 
     // Revoke all prior OTPs for this email to prevent replay attacks
@@ -65,11 +60,11 @@ export async function POST(req: NextRequest) {
 
     await sendOtpEmail(email, rawOtp)
 
-    return NextResponse.json({ message: "OTP sent to your email." })
+    return NextResponse.json({ message: "Password reset code sent to your email." })
   } catch (error) {
     console.error("[POST /api/auth/request-otp]", error)
     return NextResponse.json(
-      { error: "Failed to send OTP. Please try again or check your email." },
+      { error: "Failed to send reset code. Please try again." },
       { status: 500 }
     )
   }
