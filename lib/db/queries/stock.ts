@@ -1,6 +1,5 @@
 import { db } from "@/lib/db/connection"
-import { stockMoves, locations } from "@/lib/db/schema"
-import { eq, and, gt, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 
 export type StockLevel = {
   productId: string

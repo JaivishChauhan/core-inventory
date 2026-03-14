@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { db } from "@/lib/db/connection"
-import { products } from "@/lib/db/schema"
 import { getServerSession } from "@/lib/auth/session"
-import { asc } from "drizzle-orm"
+import {
+  InventoryMutationError,
+  createProductWithInitialStock,
+} from "@/lib/db/inventory-mutations"
+import { listInventoryProducts } from "@/lib/db/queries/inventory"
 
 const CreateProductSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -14,6 +16,8 @@ const CreateProductSchema = z.object({
   category: z.string().min(1, "Category is required"),
   unit_of_measure: z.string().min(1, "Unit of measure is required"),
   reorder_point: z.number().int().min(0, "Reorder point must be 0 or greater").default(0),
+  initial_stock: z.number().int().min(0, "Initial stock must be 0 or greater").optional(),
+  initial_location_id: z.string().uuid("Invalid initial stock location").optional(),
 })
 
 /**
@@ -25,8 +29,8 @@ export async function GET() {
   const session = await getServerSession()
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
-  const rows = await db.select().from(products).orderBy(asc(products.created_at))
-  return NextResponse.json({ products: rows })
+  const products = await listInventoryProducts()
+  return NextResponse.json({ products })
 }
 
 /**
@@ -53,9 +57,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const [created] = await db.insert(products).values(parsed.data).returning()
-    return NextResponse.json({ product: created }, { status: 201 })
+    const result = await createProductWithInitialStock(
+      parsed.data,
+      session.userId,
+      session.warehouseId
+    )
+    return NextResponse.json(result, { status: 201 })
   } catch (err: unknown) {
+    if (err instanceof InventoryMutationError) {
+      return NextResponse.json({ error: err.message }, { status: err.statusCode })
+    }
+
     const isUniqueViolation =
       err instanceof Error && err.message.includes("unique constraint")
     if (isUniqueViolation) {

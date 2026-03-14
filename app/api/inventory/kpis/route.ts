@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "@/lib/auth/session"
-import { getInventoryKpis } from "@/lib/db/queries/stock"
+import { getInventoryDashboardData } from "@/lib/db/queries/inventory"
 
 /**
  * GET /api/inventory/kpis
@@ -13,7 +13,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthenticated" }, { status: 401 })
 
   try {
-    const kpis = await getInventoryKpis()
+    const { kpis } = await getInventoryDashboardData()
     return NextResponse.json({ kpis })
   } catch (err) {
     console.error("[GET /api/inventory/kpis]", err)

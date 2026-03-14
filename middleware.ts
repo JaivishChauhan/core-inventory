@@ -4,8 +4,10 @@ import { verifySessionToken } from "@/lib/auth/jwt"
 /** Routes that don't require authentication */
 const PUBLIC_PATHS = [
   "/login",
+  "/api/auth/login",
+  "/api/auth/signup",
   "/api/auth/request-otp",
-  "/api/auth/verify-otp",
+  "/api/auth/reset-password",
 ]
 
 /**

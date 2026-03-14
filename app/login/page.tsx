@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Card,
   CardContent,
@@ -15,70 +16,51 @@ import {
 } from "@/components/ui/card"
 import { Loader2, Package, ArrowLeft } from "lucide-react"
 
-type AuthStep = "email" | "otp"
+type ForgotPasswordStep = "email" | "otp" | null
 
 /**
- * LoginPage — OTP-based passwordless auth flow.
- * Step 1: User enters email (and name if first-time).
- * Step 2: User enters the 6-digit OTP from their email.
+ * LoginPage — Password-based auth with signup/login tabs.
+ * OTP is used only for password reset flow.
  *
  * "use client" required for form state, navigation, and toast calls.
  * @security Never stores credentials. JWT is set via HTTP-only cookie by the server.
  */
 export default function LoginPage() {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState<AuthStep>("email")
-  const [email, setEmail] = useState("")
-  const [name, setName] = useState("")
-  const [otp, setOtp] = useState("")
-  const [requiresName, setRequiresName] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<"login" | "signup">("login")
+  const [forgotPasswordStep, setForgotPasswordStep] = useState<ForgotPasswordStep>(null)
 
-  async function handleEmailSubmit(e: React.FormEvent<HTMLFormElement>) {
+  // Login form
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
+  const [isLoginLoading, setIsLoginLoading] = useState(false)
+
+  // Signup form
+  const [signupName, setSignupName] = useState("")
+  const [signupEmail, setSignupEmail] = useState("")
+  const [signupPassword, setSignupPassword] = useState("")
+  const [isSignupLoading, setIsSignupLoading] = useState(false)
+
+  // Forgot password form
+  const [resetEmail, setResetEmail] = useState("")
+  const [resetOtp, setResetOtp] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [isResetLoading, setIsResetLoading] = useState(false)
+
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setIsLoading(true)
+    setIsLoginLoading(true)
 
     try {
-      const res = await fetch("/api/auth/request-otp", {
+      const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name: name || undefined }),
-      })
-      const data = await res.json() as { error?: string; requiresName?: boolean; message?: string }
-
-      if (!res.ok) {
-        if (data.requiresName) {
-          setRequiresName(true)
-          toast.info("Welcome! Please enter your name to create your account.")
-          return
-        }
-        toast.error(data.error ?? "Failed to send code.")
-        return
-      }
-
-      toast.success("Code sent! Check your inbox.")
-      setCurrentStep("otp")
-    } catch {
-      toast.error("Network error. Check your connection.")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  async function handleOtpSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      const res = await fetch("/api/auth/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
       })
       const data = await res.json() as { error?: string; user?: { name: string } }
 
       if (!res.ok) {
-        toast.error(data.error ?? "Invalid code.")
+        toast.error(data.error ?? "Login failed.")
         return
       }
 
@@ -88,7 +70,94 @@ export default function LoginPage() {
     } catch {
       toast.error("Network error. Check your connection.")
     } finally {
-      setIsLoading(false)
+      setIsLoginLoading(false)
+    }
+  }
+
+  async function handleSignup(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setIsSignupLoading(true)
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: signupEmail,
+          name: signupName,
+          password: signupPassword,
+        }),
+      })
+      const data = await res.json() as { error?: string; user?: { name: string } }
+
+      if (!res.ok) {
+        toast.error(data.error ?? "Signup failed.")
+        return
+      }
+
+      toast.success(`Welcome, ${data.user?.name ?? ""}!`)
+      router.replace("/")
+      router.refresh()
+    } catch {
+      toast.error("Network error. Check your connection.")
+    } finally {
+      setIsSignupLoading(false)
+    }
+  }
+
+  async function handleRequestResetCode(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setIsResetLoading(true)
+
+    try {
+      const res = await fetch("/api/auth/request-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail }),
+      })
+      const data = await res.json() as { error?: string; message?: string }
+
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to send reset code.")
+        return
+      }
+
+      toast.success("Reset code sent! Check your inbox.")
+      setForgotPasswordStep("otp")
+    } catch {
+      toast.error("Network error. Check your connection.")
+    } finally {
+      setIsResetLoading(false)
+    }
+  }
+
+  async function handleResetPassword(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setIsResetLoading(true)
+
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: resetEmail, otp: resetOtp, newPassword }),
+      })
+      const data = await res.json() as { error?: string; message?: string }
+
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to reset password.")
+        return
+      }
+
+      toast.success("Password reset successfully! You can now log in.")
+      setForgotPasswordStep(null)
+      setResetEmail("")
+      setResetOtp("")
+      setNewPassword("")
+      setActiveTab("login")
+    } catch {
+      toast.error("Network error. Check your connection.")
+    } finally {
+      setIsResetLoading(false)
     }
   }
 
@@ -116,109 +185,248 @@ export default function LoginPage() {
 
         {/* Auth card */}
         <Card className="w-full border-border/50 shadow-soft">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">
-              {currentStep === "email" ? "Sign In" : "Enter Your Code"}
-            </CardTitle>
-            <CardDescription>
-              {currentStep === "email"
-                ? "Enter your work email to receive a sign-in code."
-                : `We sent a 6-digit code to ${email}. Check your inbox.`}
-            </CardDescription>
-          </CardHeader>
+          {forgotPasswordStep ? (
+            <>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">
+                  {forgotPasswordStep === "email" ? "Reset Password" : "Enter Reset Code"}
+                </CardTitle>
+                <CardDescription>
+                  {forgotPasswordStep === "email"
+                    ? "Enter your email to receive a password reset code."
+                    : `We sent a 6-digit code to ${resetEmail}. Check your inbox.`}
+                </CardDescription>
+              </CardHeader>
 
-          <CardContent>
-            {currentStep === "email" ? (
-              <form onSubmit={handleEmailSubmit} className="space-y-4">
-                {requiresName && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="name" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                      Full Name
-                    </Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Jane Smith"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      autoFocus
-                    />
-                  </div>
+              <CardContent>
+                {forgotPasswordStep === "email" ? (
+                  <form onSubmit={handleRequestResetCode} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="reset-email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Email Address
+                      </Label>
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="you@company.com"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        required
+                        autoFocus
+                        autoComplete="email"
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isResetLoading}
+                      className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                    >
+                      {isResetLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Send Reset Code
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full gap-1.5"
+                      onClick={() => {
+                        setForgotPasswordStep(null)
+                        setResetEmail("")
+                      }}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back to Login
+                    </Button>
+                  </form>
+                ) : (
+                    <form onSubmit={handleResetPassword} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="reset-otp" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          6-Digit Code
+                        </Label>
+                        <Input
+                          id="reset-otp"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="000000"
+                          value={resetOtp}
+                          onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, ""))}
+                          className="text-center font-mono text-2xl tracking-[0.5em]"
+                          required
+                          autoFocus
+                          autoComplete="one-time-code"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="new-password" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          New Password
+                        </Label>
+                        <Input
+                          id="new-password"
+                          type="password"
+                          placeholder="At least 8 characters"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          required
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={isResetLoading || resetOtp.length < 6}
+                        className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                      >
+                        {isResetLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Reset Password
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full gap-1.5"
+                        onClick={() => {
+                        setForgotPasswordStep("email")
+                        setResetOtp("")
+                        setNewPassword("")
+                      }}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back
+                    </Button>
+                  </form>
                 )}
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    Email Address
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@company.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoFocus={!requiresName}
-                    autoComplete="email"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  id="btn-request-otp"
-                  disabled={isLoading}
-                  className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Send Code
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={handleOtpSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="otp" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                    6-Digit Code
-                  </Label>
-                  <Input
-                    id="otp"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="000000"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                    className="text-center font-mono text-2xl tracking-[0.5em]"
-                    required
-                    autoFocus
-                    autoComplete="one-time-code"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  id="btn-verify-otp"
-                  disabled={isLoading || otp.length < 6}
-                  className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Verify &amp; Sign In
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full gap-1.5"
-                  onClick={() => {
-                    setCurrentStep("email")
-                    setOtp("")
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-              </form>
-            )}
-          </CardContent>
+              </CardContent>
+            </>
+          ) : (
+            <>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Welcome</CardTitle>
+                <CardDescription>
+                  Sign in to your account or create a new one.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent>
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "login" | "signup")}>
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="login">Login</TabsTrigger>
+                    <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="login" className="mt-4">
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="login-email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          Email Address
+                        </Label>
+                        <Input
+                          id="login-email"
+                          type="email"
+                          placeholder="you@company.com"
+                          value={loginEmail}
+                          onChange={(e) => setLoginEmail(e.target.value)}
+                          required
+                          autoComplete="email"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="login-password" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          Password
+                        </Label>
+                        <Input
+                          id="login-password"
+                          type="password"
+                          placeholder="Enter your password"
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          required
+                          autoComplete="current-password"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 text-sm text-indigo-600 hover:text-indigo-700"
+                        onClick={() => setForgotPasswordStep("email")}
+                      >
+                        Forgot password?
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={isLoginLoading}
+                        className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                      >
+                        {isLoginLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Sign In
+                      </Button>
+                    </form>
+                  </TabsContent>
+
+                  <TabsContent value="signup" className="mt-4">
+                    <form onSubmit={handleSignup} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="signup-name" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          Full Name
+                        </Label>
+                        <Input
+                          id="signup-name"
+                          type="text"
+                          placeholder="Jane Smith"
+                          value={signupName}
+                          onChange={(e) => setSignupName(e.target.value)}
+                          required
+                          autoComplete="name"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="signup-email" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          Email Address
+                        </Label>
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="you@company.com"
+                          value={signupEmail}
+                          onChange={(e) => setSignupEmail(e.target.value)}
+                          required
+                          autoComplete="email"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="signup-password" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                          Password
+                        </Label>
+                        <Input
+                          id="signup-password"
+                          type="password"
+                          placeholder="At least 8 characters"
+                          value={signupPassword}
+                          onChange={(e) => setSignupPassword(e.target.value)}
+                          required
+                          autoComplete="new-password"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={isSignupLoading}
+                        className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition-all hover:-translate-y-0.5 hover:shadow-button disabled:opacity-60"
+                      >
+                        {isSignupLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : null}
+                        Create Account
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </>
+          )}
         </Card>
       </div>
     </div>

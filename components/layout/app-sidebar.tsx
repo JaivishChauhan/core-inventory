@@ -11,7 +11,9 @@
  */
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useMutation, useQuery } from "@tanstack/react-query"
+import { toast } from "sonner"
 import {
   LayoutDashboard,
   Package,
@@ -23,6 +25,8 @@ import {
   Settings,
   Boxes,
   ChevronDown,
+  LogOut,
+  User,
 } from "lucide-react"
 
 import {
@@ -48,10 +52,18 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const mainNavItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Products", href: "/products", icon: Package },
+  { title: "Orders", href: "/orders", icon: History },
 ]
 
 const operationItems = [
@@ -67,16 +79,39 @@ const operationItems = [
     href: "/operations/adjustments",
     icon: ClipboardCheck,
   },
+  { title: "Move History", href: "/move-history", icon: History },
 ]
 
 const systemNavItems = [
-  { title: "Move History", href: "/move-history", icon: History },
   { title: "Settings", href: "/settings", icon: Settings },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const { isMobile, setOpenMobile } = useSidebar()
+  const { data: sessionData } = useQuery<{
+    user: { email: string; name: string }
+  }>({
+    queryKey: ["auth-me"],
+    queryFn: () => fetch("/api/auth/me").then((response) => response.json()),
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/auth/logout", { method: "POST" })
+      if (!response.ok) throw new Error("Failed to log out.")
+    },
+    onSuccess: () => {
+      toast.success("Logged out successfully.")
+      router.replace("/login")
+      router.refresh()
+    },
+    onError: (error: Error) => {
+      toast.error(error.message)
+    },
+  })
 
   /**
    * Determines if a nav link is the currently active route.
@@ -93,6 +128,15 @@ export function AppSidebar() {
   function handleNavigate() {
     if (isMobile) setOpenMobile(false)
   }
+
+  const userName = sessionData?.user.name ?? "Warehouse Manager"
+  const userEmail = sessionData?.user.email ?? "manager@core.inv"
+  const initials = userName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -225,26 +269,43 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              size="lg"
-              tooltip="Profile"
-              className="touch-target"
-            >
-              {/* FRD Visual DNA: Gradient avatar */}
-              <Avatar className="size-8">
-                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-semibold text-white">
-                  WM
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold">
-                  Warehouse Manager
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  manager@core.inv
-                </span>
-              </div>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  tooltip="Profile"
+                  className="touch-target"
+                >
+                  <Avatar className="size-8">
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-500 text-xs font-semibold text-white">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                    <span className="truncate font-semibold">{userName}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {userEmail}
+                    </span>
+                  </div>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" onClick={handleNavigate} className="gap-2">
+                    <User className="size-4" />
+                    My Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="gap-2 text-destructive focus:text-destructive"
+                  onClick={() => logoutMutation.mutate()}
+                >
+                  <LogOut className="size-4" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
